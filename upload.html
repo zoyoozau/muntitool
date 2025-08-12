@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload New Tool - Muntitool Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        .instruction-card {
+            transition: background-color 0.3s ease;
+        }
+        .instruction-card:hover {
+            background-color: #f9fafb;
+        }
+        .copy-button {
+            transition: all 0.2s ease;
+        }
+        .copy-button:hover {
+            transform: scale(1.05);
+        }
+        .copy-button.copied {
+            background-color: #22c55e; /* green-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto px-4 py-10 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Add a New Tool</h1>
+            <p class="mt-2 text-gray-600">This page helps you generate the necessary files and configurations to add a new tool to the Muntitool website.</p>
+            <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline"><i class="fas fa-arrow-left mr-2"></i>Back to Homepage</a>
+        </header>
+
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-8" role="alert">
+            <p class="font-bold">Important Note</p>
+            <p>This is a static website. This page does not automatically upload files. It will generate the required files and content for you to manually add to the site's repository.</p>
+        </div>
+
+        <div class="bg-white p-8 rounded-lg shadow-md">
+            <div class="space-y-6">
+                <div>
+                    <label for="tool-name" class="block text-sm font-medium text-gray-700">Tool Name</label>
+                    <input type="text" id="tool-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., JSON Formatter">
+                </div>
+                <div>
+                    <label for="tool-description" class="block text-sm font-medium text-gray-700">Tool Description</label>
+                    <input type="text" id="tool-description" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="A short, catchy description of what the tool does.">
+                </div>
+                <div>
+                    <label for="tool-html" class="block text-sm font-medium text-gray-700">Tool HTML Content</label>
+                    <textarea id="tool-html" rows="10" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Paste the complete HTML code for your tool here."></textarea>
+                </div>
+                <div>
+                    <button id="generate-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-cogs mr-2"></i>Generate Files & Instructions
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-section" class="hidden mt-10">
+            <h2 class="text-3xl font-bold text-center mb-6">Your New Tool Is Ready!</h2>
+            <p class="text-center text-gray-600 mb-8">Follow these steps carefully to add your tool to the website.</p>
+
+            <div class="space-y-8">
+                <!-- Step 1: Download File -->
+                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
+                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">1</span> Download Your Tool's HTML File</h3>
+                    <p class="mb-4">Click the button below to download the HTML file for your tool. It has been named automatically based on the tool name you provided.</p>
+                    <a id="download-link" class="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        <i class="fas fa-download mr-2"></i>Download File
+                    </a>
+                </div>
+
+                <!-- Step 2: Upload to Repository -->
+                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
+                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">2</span> Upload to the 'tools' Directory</h3>
+                    <p>In your GitHub repository, navigate to the <code class="bg-gray-200 text-sm font-mono p-1 rounded">tools/</code> directory and upload the file you just downloaded.</p>
+                </div>
+
+                <!-- Step 3: Update tools.json -->
+                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
+                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">3</span> Update `tools.json`</h3>
+                    <p class="mb-4">Copy the entire block of code below. Then, open the <code class="bg-gray-200 text-sm font-mono p-1 rounded">tools.json</code> file in the repository's root, delete all its content, and paste this new content.</p>
+                    <div class="relative">
+                        <pre id="tools-json-output" class="bg-gray-800 text-white p-4 rounded-md overflow-x-auto"></pre>
+                        <button class="copy-button absolute top-2 right-2 px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-700" data-clipboard-target="#tools-json-output">Copy</button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Update sitemap.xml -->
+                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
+                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">4</span> Update `sitemap.xml`</h3>
+                    <p class="mb-4">Do the same for the sitemap. Copy the code below and completely replace the content of the <code class="bg-gray-200 text-sm font-mono p-1 rounded">sitemap.xml</code> file in the repository's root.</p>
+                     <div class="relative">
+                        <pre id="sitemap-xml-output" class="bg-gray-800 text-white p-4 rounded-md overflow-x-auto"></pre>
+                        <button class="copy-button absolute top-2 right-2 px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-700" data-clipboard-target="#sitemap-xml-output">Copy</button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Commit -->
+                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
+                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">5</span> Commit Your Changes</h3>
+                    <p>Finally, commit the three changes (the new tool file, the updated `tools.json`, and the updated `sitemap.xml`) to your repository. The GitHub Pages action will automatically deploy the new version of the site.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const generateBtn = document.getElementById('generate-btn');
+            const resultsSection = document.getElementById('results-section');
+            const downloadLink = document.getElementById('download-link');
+            const toolsJsonOutput = document.getElementById('tools-json-output');
+            const sitemapXmlOutput = document.getElementById('sitemap-xml-output');
+
+            const toolNameInput = document.getElementById('tool-name');
+            const toolDescInput = document.getElementById('tool-description');
+            const toolHtmlInput = document.getElementById('tool-html');
+
+            function slugify(text) {
+                return text.toString().toLowerCase()
+                    .replace(/\s+/g, '-')           // Replace spaces with -
+                    .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+                    .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+                    .replace(/^-+/, '')             // Trim - from start of text
+                    .replace(/-+$/, '');            // Trim - from end of text
+            }
+
+            async function generateSitemap(tools) {
+                const today = new Date().toISOString().split('T')[0];
+                const siteUrl = window.location.origin + window.location.pathname.replace('upload.html', '');
+
+                let sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+                sitemapContent += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+                // Homepage
+                sitemapContent += `  <url>\n    <loc>${siteUrl}</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
+                // Tool display page
+                sitemapContent += `  <url>\n    <loc>${siteUrl}tool.html</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
+
+                tools.forEach(tool => {
+                    sitemapContent += `  <url>\n    <loc>${siteUrl}tool.html?path=${tool.path}</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
+                });
+
+                sitemapContent += `</urlset>`;
+                return sitemapContent;
+            }
+
+            generateBtn.addEventListener('click', async () => {
+                const toolName = toolNameInput.value.trim();
+                const toolDescription = toolDescInput.value.trim();
+                const toolHtml = toolHtmlInput.value.trim();
+
+                if (!toolName || !toolDescription || !toolHtml) {
+                    alert('Please fill in all fields.');
+                    return;
+                }
+
+                // 1. Generate slug and file name
+                const toolSlug = slugify(toolName);
+                const fileName = `${toolSlug}.html`;
+                const filePath = `tools/${fileName}`;
+
+                // 2. Prepare HTML file for download
+                const blob = new Blob([toolHtml], { type: 'text/html' });
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.download = fileName;
+
+                // 3. Update tools.json
+                try {
+                    const response = await fetch('tools.json');
+                    let tools = await response.json();
+
+                    const newTool = {
+                        name: toolName,
+                        path: filePath,
+                        description: toolDescription
+                    };
+                    tools.push(newTool);
+
+                    // Display updated JSON
+                    const toolsJsonString = JSON.stringify(tools, null, 2);
+                    toolsJsonOutput.textContent = toolsJsonString;
+
+                    // 4. Update sitemap.xml
+                    const sitemapContent = await generateSitemap(tools);
+                    sitemapXmlOutput.textContent = sitemapContent;
+
+                    // 5. Show results
+                    resultsSection.classList.remove('hidden');
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+                } catch (error) {
+                    console.error('Error processing files:', error);
+                    alert('Could not load existing tools.json. Make sure the file exists and is accessible.');
+                }
+            });
+
+            // Initialize Clipboard.js
+            const clipboard = new ClipboardJS('.copy-button');
+            clipboard.on('success', function(e) {
+                const originalText = e.trigger.innerHTML;
+                e.trigger.textContent = 'Copied!';
+                e.trigger.classList.add('copied');
+                setTimeout(() => {
+                    e.trigger.innerHTML = originalText;
+                    e.trigger.classList.remove('copied');
+                }, 2000);
+                e.clearSelection();
+            });
+            clipboard.on('error', function(e) {
+                console.error('Action:', e.action);
+                console.error('Trigger:', e.trigger);
+                alert('Failed to copy. Please copy manually.');
+            });
+        });
+    </script>
+</body>
+</html>
