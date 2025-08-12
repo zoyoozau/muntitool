@@ -3,36 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Title will be set dynamically -->
     <title>Loading Tool...</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             overflow: hidden;
+            font-family: sans-serif;
         }
-        iframe {
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #4a5568; /* gray-700 */
+            background-color: #f9fafb; /* gray-50 */
+        }
+        #loader .fa-spinner {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        #loader p {
+            font-size: 1.25rem;
+        }
+        #tool-frame {
             border: none;
             width: 100%;
             height: 100%;
+            visibility: hidden; /* Hide iframe initially */
         }
     </style>
 </head>
 <body>
+    <div id="loader">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Loading Tool...</p>
+    </div>
     <iframe id="tool-frame" title="Tool Content"></iframe>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('loader');
             const toolFrame = document.getElementById('tool-frame');
             const urlParams = new URLSearchParams(window.location.search);
             const toolPath = urlParams.get('path');
 
             if (toolPath) {
-                // Set the iframe source to the tool's path
+                // Set the iframe source
                 toolFrame.src = toolPath;
 
-                // Fetch the tool's metadata to set the page title
+                // Add event listener for when the iframe has loaded
+                toolFrame.addEventListener('load', () => {
+                    // Hide loader and show iframe
+                    loader.style.display = 'none';
+                    toolFrame.style.visibility = 'visible';
+                });
+
+                // Fetch tool metadata to set the page title
                 fetch('tools.json')
                     .then(response => response.json())
                     .then(tools => {
@@ -49,7 +79,8 @@
                     });
             } else {
                 // Handle case where no tool path is provided
-                document.body.innerHTML = '<p style="font-family: sans-serif; text-align: center; padding: 2rem;">No tool specified. Please return to the homepage and select a tool.</p>';
+                loader.style.display = 'none';
+                document.body.innerHTML = '<p style="text-align: center; padding: 2rem;">No tool specified. Please return to the homepage and select a tool.</p>';
                 document.title = 'No Tool Specified - Muntitool';
             }
         });
