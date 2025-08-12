@@ -1,10 +1,9 @@
 <?php
 // --- Database Configuration ---
-// Replace the placeholder values with your actual database credentials.
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'your_db_name');
-define('DB_USER', 'your_db_user');
-define('DB_PASS', 'your_db_password');
+define('DB_NAME', 'moo');
+define('DB_USER', 'thaisum_moo');
+define('DB_PASS', '038382167');
 define('DB_CHARSET', 'utf8mb4');
 
 // --- PDO Connection ---
@@ -21,6 +20,7 @@ try {
     // In a real production environment, you would log this error and
     // show a generic, user-friendly error page.
     // For now, we'll just stop execution and show the error.
+    // The user can enable display_errors in index.php to see this.
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
 ?>
