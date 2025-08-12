@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muntitool - A Collection of Awesome Web Tools</title>
+    <meta name="description" content="A curated collection of free, powerful, and easy-to-use web tools to boost your productivity.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="flex flex-col min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm">
+            <div class="container mx-auto px-4 py-6">
+                <h1 class="text-3xl font-bold text-gray-900">Muntitool</h1>
+                <p class="mt-1 text-gray-600">Your one-stop shop for useful web utilities.</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <h2 class="text-2xl font-semibold mb-6">Available Tools</h2>
+            <div id="tools-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Tools will be loaded here dynamically -->
+                <p id="loading-message" class="text-gray-500">Loading tools...</p>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white mt-8 py-4">
+            <div class="container mx-auto px-4 text-center text-gray-500">
+                <p>&copy; 2024 Muntitool. All Rights Reserved.</p>
+                <a href="upload.html" class="text-xs text-gray-400 hover:text-gray-600 mt-2 inline-block">Admin</a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('tools.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(tools => {
+                    const container = document.getElementById('tools-container');
+                    const loadingMessage = document.getElementById('loading-message');
+                    container.innerHTML = ''; // Clear loading message
+
+                    if (tools.length === 0) {
+                        container.innerHTML = '<p class="text-gray-500">No tools available at the moment.</p>';
+                        return;
+                    }
+
+                    tools.forEach(tool => {
+                        const toolCard = `
+                            <a href="tool.html?path=${tool.path}" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                                <h3 class="text-xl font-semibold text-gray-800">${tool.name}</h3>
+                                <p class="text-gray-600 mt-2">${tool.description || ''}</p>
+                                <div class="mt-4 text-blue-600 hover:underline">
+                                    Open Tool <i class="fas fa-arrow-right ml-1"></i>
+                                </div>
+                            </a>
+                        `;
+                        container.innerHTML += toolCard;
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching or parsing tools.json:', error);
+                    const container = document.getElementById('tools-container');
+                    container.innerHTML = '<p class="text-red-500">Could not load tools. Please check the console for more details.</p>';
+                });
+        });
+    </script>
+
+</body>
+</html>
