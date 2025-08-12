@@ -14,5 +14,8 @@ RewriteBase /
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# The rewrite rule
+# The rewrite rule for tools
 RewriteRule ^tools/([a-zA-Z0-9-]+)/?$ tool.php?slug=$1 [L,QSA]
+
+# 2. Rewrite sitemap.xml to the dynamic PHP script
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
