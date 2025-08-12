@@ -26,6 +26,18 @@
         .copy-button.copied {
             background-color: #22c55e; /* green-500 */
         }
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            padding: 2.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .drop-zone.dragover {
+            background-color: #eef2ff; /* indigo-50 */
+            border-color: #4f46e5; /* indigo-600 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -39,28 +51,28 @@
 
         <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-8" role="alert">
             <p class="font-bold">Important Note</p>
-            <p>This is a static website. This page does not automatically upload files. It will generate the required files and content for you to manually add to the site's repository.</p>
+            <p>This is a static website. This page does not automatically upload files. It will generate the required configurations for you to manually add to the site's repository.</p>
         </div>
 
         <div class="bg-white p-8 rounded-lg shadow-md">
-            <div class="space-y-6">
-                <div>
-                    <label for="tool-name" class="block text-sm font-medium text-gray-700">Tool Name</label>
-                    <input type="text" id="tool-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., JSON Formatter">
+            <div>
+                <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2">Upload your Tool's HTML file</label>
+                <div id="drop-zone" class="drop-zone">
+                    <div class="flex flex-col items-center justify-center">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-sm text-gray-500"><span class="font-semibold text-blue-600">Click to upload</span> or drag and drop</p>
+                        <p class="text-xs text-gray-400 mt-1">Single HTML file only</p>
+                    </div>
+                    <input type="file" id="file-upload" class="hidden" accept=".html, .htm">
                 </div>
-                <div>
-                    <label for="tool-description" class="block text-sm font-medium text-gray-700">Tool Description</label>
-                    <input type="text" id="tool-description" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="A short, catchy description of what the tool does.">
+                <div id="file-info" class="mt-4 text-center hidden">
+                    <p class="text-sm font-medium text-green-700"><i class="fas fa-check-circle mr-2"></i><span id="file-name"></span></p>
                 </div>
-                <div>
-                    <label for="tool-html" class="block text-sm font-medium text-gray-700">Tool HTML Content</label>
-                    <textarea id="tool-html" rows="10" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Paste the complete HTML code for your tool here."></textarea>
-                </div>
-                <div>
-                    <button id="generate-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fas fa-cogs mr-2"></i>Generate Files & Instructions
-                    </button>
-                </div>
+            </div>
+            <div class="mt-6">
+                <button id="generate-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-cogs mr-2"></i>Generate Instructions
+                </button>
             </div>
         </div>
 
@@ -69,19 +81,19 @@
             <p class="text-center text-gray-600 mb-8">Follow these steps carefully to add your tool to the website.</p>
 
             <div class="space-y-8">
-                <!-- Step 1: Download File -->
+                <!-- Step 1: Rename File -->
                 <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
-                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">1</span> Download Your Tool's HTML File</h3>
-                    <p class="mb-4">Click the button below to download the HTML file for your tool. It has been named automatically based on the tool name you provided.</p>
-                    <a id="download-link" class="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                        <i class="fas fa-download mr-2"></i>Download File
-                    </a>
+                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">1</span> Rename Your HTML File</h3>
+                    <p class="mb-4">Your file needs to be named correctly. Rename the HTML file you just uploaded to:</p>
+                    <div class="bg-gray-800 text-white font-mono p-3 rounded-md text-center">
+                        <span id="new-file-name"></span>
+                    </div>
                 </div>
 
                 <!-- Step 2: Upload to Repository -->
                 <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
                     <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">2</span> Upload to the 'tools' Directory</h3>
-                    <p>In your GitHub repository, navigate to the <code class="bg-gray-200 text-sm font-mono p-1 rounded">tools/</code> directory and upload the file you just downloaded.</p>
+                    <p>In your GitHub repository, navigate to the <code class="bg-gray-200 text-sm font-mono p-1 rounded">tools/</code> directory and upload your newly renamed file.</p>
                 </div>
 
                 <!-- Step 3: Update tools.json -->
@@ -116,23 +128,69 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('drop-zone');
+            const fileUpload = document.getElementById('file-upload');
+            const fileInfo = document.getElementById('file-info');
+            const fileNameSpan = document.getElementById('file-name');
             const generateBtn = document.getElementById('generate-btn');
+
             const resultsSection = document.getElementById('results-section');
-            const downloadLink = document.getElementById('download-link');
+            const newFileNameSpan = document.getElementById('new-file-name');
             const toolsJsonOutput = document.getElementById('tools-json-output');
             const sitemapXmlOutput = document.getElementById('sitemap-xml-output');
 
-            const toolNameInput = document.getElementById('tool-name');
-            const toolDescInput = document.getElementById('tool-description');
-            const toolHtmlInput = document.getElementById('tool-html');
+            let toolHtmlContent = null;
+
+            // --- Drag and Drop Logic ---
+            dropZone.addEventListener('click', () => fileUpload.click());
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length) {
+                    handleFile(files[0]);
+                }
+            });
+            fileUpload.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            function handleFile(file) {
+                if (file && (file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
+                    fileNameSpan.textContent = file.name;
+                    fileInfo.classList.remove('hidden');
+                    generateBtn.disabled = false;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        toolHtmlContent = e.target.result;
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert('Please upload a valid HTML file (.html or .htm).');
+                    fileInfo.classList.add('hidden');
+                    generateBtn.disabled = true;
+                    toolHtmlContent = null;
+                }
+            }
 
             function slugify(text) {
                 return text.toString().toLowerCase()
-                    .replace(/\s+/g, '-')           // Replace spaces with -
-                    .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
-                    .replace(/\-\-+/g, '-')         // Replace multiple - with single -
-                    .replace(/^-+/, '')             // Trim - from start of text
-                    .replace(/-+$/, '');            // Trim - from end of text
+                    .replace(/\s+/g, '-')
+                    .replace(/[^\w\-]+/g, '')
+                    .replace(/\-\-+/g, '-')
+                    .replace(/^-+/, '')
+                    .replace(/-+$/, '');
             }
 
             async function generateSitemap(tools) {
@@ -141,9 +199,7 @@
 
                 let sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 sitemapContent += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-                // Homepage
                 sitemapContent += `  <url>\n    <loc>${siteUrl}</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
-                // Tool display page
                 sitemapContent += `  <url>\n    <loc>${siteUrl}tool.html</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
 
                 tools.forEach(tool => {
@@ -155,26 +211,25 @@
             }
 
             generateBtn.addEventListener('click', async () => {
-                const toolName = toolNameInput.value.trim();
-                const toolDescription = toolDescInput.value.trim();
-                const toolHtml = toolHtmlInput.value.trim();
-
-                if (!toolName || !toolDescription || !toolHtml) {
-                    alert('Please fill in all fields.');
+                if (!toolHtmlContent) {
+                    alert('Could not read file content. Please try uploading again.');
                     return;
                 }
 
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(toolHtmlContent, 'text/html');
+
+                const toolName = doc.querySelector('title')?.innerText.trim() || 'Untitled Tool';
+                const metaDescription = doc.querySelector('meta[name="description"]');
+                const toolDescription = metaDescription ? metaDescription.getAttribute('content').trim() : 'No description found.';
+
                 // 1. Generate slug and file name
                 const toolSlug = slugify(toolName);
-                const fileName = `${toolSlug}.html`;
-                const filePath = `tools/${fileName}`;
+                const newFileName = `${toolSlug}.html`;
+                const filePath = `tools/${newFileName}`;
+                newFileNameSpan.textContent = newFileName;
 
-                // 2. Prepare HTML file for download
-                const blob = new Blob([toolHtml], { type: 'text/html' });
-                downloadLink.href = URL.createObjectURL(blob);
-                downloadLink.download = fileName;
-
-                // 3. Update tools.json
+                // 2. Update tools.json
                 try {
                     const response = await fetch('tools.json');
                     let tools = await response.json();
@@ -184,17 +239,22 @@
                         path: filePath,
                         description: toolDescription
                     };
+
+                    if (tools.some(t => t.path === newTool.path)) {
+                        alert(`A tool with the path "${newTool.path}" already exists. Please change the <title> of your HTML file to generate a unique name.`);
+                        return;
+                    }
+
                     tools.push(newTool);
 
-                    // Display updated JSON
                     const toolsJsonString = JSON.stringify(tools, null, 2);
                     toolsJsonOutput.textContent = toolsJsonString;
 
-                    // 4. Update sitemap.xml
+                    // 3. Update sitemap.xml
                     const sitemapContent = await generateSitemap(tools);
                     sitemapXmlOutput.textContent = sitemapContent;
 
-                    // 5. Show results
+                    // 4. Show results
                     resultsSection.classList.remove('hidden');
                     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
@@ -215,11 +275,6 @@
                     e.trigger.classList.remove('copied');
                 }, 2000);
                 e.clearSelection();
-            });
-            clipboard.on('error', function(e) {
-                console.error('Action:', e.action);
-                console.error('Trigger:', e.trigger);
-                alert('Failed to copy. Please copy manually.');
             });
         });
     </script>
