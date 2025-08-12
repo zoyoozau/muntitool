@@ -1,43 +1,38 @@
 <?php
+require_once 'db_config.php';
+
 // Default values
 $toolName = 'Tool Not Found';
 $toolPath = '';
 $errorMessage = '';
+$pageTitle = 'Tool Not Found';
 
 // Check if a slug is provided
 if (isset($_GET['slug']) && !empty($_GET['slug'])) {
     $slug = $_GET['slug'];
-    $toolsJsonPath = 'tools.json';
 
-    if (file_exists($toolsJsonPath)) {
-        $toolsJson = file_get_contents($toolsJsonPath);
-        $tools = json_decode($toolsJson, true);
-        $found = false;
+    try {
+        $stmt = $pdo->prepare("SELECT name, path FROM tools WHERE slug = :slug LIMIT 1");
+        $stmt->execute([':slug' => $slug]);
+        $tool = $stmt->fetch();
 
-        if (is_array($tools)) {
-            foreach ($tools as $tool) {
-                // Extract slug from path: "tools/my-slug.html" -> "my-slug"
-                $pathSlug = basename($tool['path'], '.html');
-
-                if ($pathSlug === $slug) {
-                    $toolName = htmlspecialchars($tool['name']);
-                    $toolPath = htmlspecialchars($tool['path']);
-                    $found = true;
-                    break;
-                }
-            }
-        }
-
-        if (!$found) {
+        if ($tool) {
+            $pageTitle = htmlspecialchars($tool['name']);
+            $toolName = $pageTitle;
+            $toolPath = htmlspecialchars($tool['path']);
+        } else {
             $errorMessage = 'The requested tool could not be found.';
             http_response_code(404);
         }
-    } else {
-        $errorMessage = 'Configuration file is missing.';
+    } catch (\PDOException $e) {
+        $errorMessage = 'Database query failed. Please check server logs.';
+        $pageTitle = 'Database Error';
         http_response_code(500);
     }
+
 } else {
     $errorMessage = 'No tool specified.';
+    $pageTitle = 'Error';
     http_response_code(400);
 }
 ?>
@@ -46,7 +41,7 @@ if (isset($_GET['slug']) && !empty($_GET['slug'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $toolName; ?> - Muntitool</title>
+    <title><?php echo $pageTitle; ?> - Muntitool</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body, html {
@@ -83,6 +78,10 @@ if (isset($_GET['slug']) && !empty($_GET['slug'])) {
             padding: 2rem;
             color: #b91c1c; /* red-700 */
         }
+        .error-message h1 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -90,7 +89,7 @@ if (isset($_GET['slug']) && !empty($_GET['slug'])) {
     <?php if (!empty($toolPath)): ?>
         <div id="loader">
             <i class="fas fa-spinner fa-spin"></i>
-            <p>Loading Tool...</p>
+            <p>Loading Tool: <?php echo $toolName; ?>...</p>
         </div>
         <iframe id="tool-frame" src="/<?php echo $toolPath; ?>" title="Tool Content"></iframe>
 
@@ -109,7 +108,7 @@ if (isset($_GET['slug']) && !empty($_GET['slug'])) {
         <div class="error-message">
             <h1>Error</h1>
             <p><?php echo htmlspecialchars($errorMessage); ?></p>
-            <p><a href="/" style="color: #2563eb;">Return to Homepage</a></p>
+            <p><a href="/" style="color: #2563eb; text-decoration: underline;">Return to Homepage</a></p>
         </div>
     <?php endif; ?>
 

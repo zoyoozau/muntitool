@@ -1,3 +1,17 @@
+<?php
+require_once 'db_config.php';
+
+// Fetch all tools from the database
+try {
+    $stmt = $pdo->query("SELECT name, slug, description FROM tools ORDER BY created_at DESC");
+    $tools = $stmt->fetchAll();
+} catch (\PDOException $e) {
+    // If the database connection fails, we can't show the tools.
+    // Show a friendly error message. In a real app, you'd log the error.
+    $tools = [];
+    $db_error = "Error: Could not connect to the database to fetch tools. Please ensure the database is configured correctly.";
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,8 +73,21 @@
         <main class="flex-grow container mx-auto px-4 py-8">
             <h2 class="text-2xl font-semibold mb-6">Available Tools</h2>
             <div id="tools-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Tools will be loaded here dynamically -->
-                <p id="loading-message" class="text-gray-500">Loading tools...</p>
+                <?php if (isset($db_error)): ?>
+                    <p class="text-red-500 col-span-full"><?php echo $db_error; ?></p>
+                <?php elseif (empty($tools)): ?>
+                    <p class="text-gray-500 col-span-full">No tools available yet. Why not <a href="upload.html" class="text-blue-600 hover:underline">add one</a>?</p>
+                <?php else: ?>
+                    <?php foreach ($tools as $tool): ?>
+                        <a href="tools/<?php echo htmlspecialchars($tool['slug']); ?>/" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                            <h3 class="text-xl font-semibold text-gray-800"><?php echo htmlspecialchars($tool['name']); ?></h3>
+                            <p class="text-gray-600 mt-2"><?php echo htmlspecialchars($tool['description']); ?></p>
+                            <div class="mt-4 text-blue-600 hover:underline">
+                                Open Tool <i class="fas fa-arrow-right ml-1"></i>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </main>
 
@@ -74,48 +101,8 @@
     </div>
 
     <script>
+        // This script block is now only for the toast notifications.
         document.addEventListener('DOMContentLoaded', () => {
-            fetch('tools.json')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(tools => {
-                    const container = document.getElementById('tools-container');
-                    const loadingMessage = document.getElementById('loading-message');
-                    container.innerHTML = ''; // Clear loading message
-
-                    if (tools.length === 0) {
-                        container.innerHTML = '<p class="text-gray-500">No tools available at the moment.</p>';
-                        return;
-                    }
-
-                    tools.forEach(tool => {
-                        // Extract slug from path like "tools/my-slug.html" -> "my-slug"
-                        const slug = tool.path.split('/').pop().replace(/\.html$/, '');
-                        const prettyUrl = `tools/${slug}/`;
-
-                        const toolCard = `
-                            <a href="${prettyUrl}" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                                <h3 class="text-xl font-semibold text-gray-800">${tool.name}</h3>
-                                <p class="text-gray-600 mt-2">${tool.description || ''}</p>
-                                <div class="mt-4 text-blue-600 hover:underline">
-                                    Open Tool <i class="fas fa-arrow-right ml-1"></i>
-                                </div>
-                            </a>
-                        `;
-                        container.innerHTML += toolCard;
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching or parsing tools.json:', error);
-                    const container = document.getElementById('tools-container');
-                    container.innerHTML = '<p class="text-red-500">Could not load tools. Please check the console for more details.</p>';
-                });
-
-            // --- Toast Notification Logic ---
             const urlParams = new URLSearchParams(window.location.search);
             const status = urlParams.get('status');
             const message = urlParams.get('message');
@@ -131,12 +118,13 @@
                     iconClass = 'fas fa-check-circle';
                     title = 'Success!';
                 } else if (status === 'error') {
+                    // Errors are shown on upload.html, but we keep this for flexibility
                     toast.className = 'toast error';
                     iconClass = 'fas fa-exclamation-circle';
                     title = 'Error!';
                 }
 
-                const messageText = message || 'Tool uploaded successfully!';
+                const messageText = message || 'Action completed successfully!';
                 toast.innerHTML = `<i class="${iconClass}"></i><div><b>${title}</b><p>${messageText}</p></div>`;
 
                 toastContainer.appendChild(toast);
@@ -149,7 +137,6 @@
                 // Hide the toast after 5 seconds
                 setTimeout(() => {
                     toast.classList.remove('show');
-                    // Remove the element from the DOM after transition
                     setTimeout(() => {
                         toast.remove();
                     }, 500);

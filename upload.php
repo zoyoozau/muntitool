@@ -1,8 +1,9 @@
 <?php
+// Include the database configuration. This will provide the $pdo object.
+require_once 'db_config.php';
 
 // --- Configuration ---
 $uploadDir = 'tools/';
-$toolsJsonPath = 'tools.json';
 $sitemapPath = 'sitemap.xml';
 $allowedMimeType = 'text/html';
 $maxFileSize = 2 * 1024 * 1024; // 2 MB
@@ -16,7 +17,7 @@ $maxFileSize = 2 * 1024 * 1024; // 2 MB
  */
 function redirect_with_status($status, $message = '') {
     // On success, redirect to the homepage. On error, redirect back to the upload form.
-    $redirectPage = ($status === 'success') ? 'index.html' : 'upload.html';
+    $redirectPage = ($status === 'success') ? 'index.php' : 'upload.html';
     $location = $redirectPage . '?status=' . $status;
     if (!empty($message)) {
         $location .= '&message=' . urlencode($message);
@@ -47,7 +48,6 @@ function slugify($text) {
 
 // 1. Check Request and File Upload
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    // Not a POST request, silently exit or redirect to form
     header('Location: upload.html');
     exit();
 }
@@ -63,7 +63,6 @@ if ($file['size'] > $maxFileSize) {
     redirect_with_status('error', 'File is too large. Maximum size is 2MB.');
 }
 
-// More robust MIME type check
 $finfo = new finfo(FILEINFO_MIME_TYPE);
 $mime = $finfo->file($file['tmp_name']);
 if ($mime !== $allowedMimeType && !str_ends_with($file['name'], '.html') && !str_ends_with($file['name'], '.htm')) {
@@ -78,8 +77,7 @@ if ($htmlContent === false) {
 }
 
 $doc = new DOMDocument();
-// Suppress warnings from malformed HTML
-@$doc->loadHTML($htmlContent);
+@$doc->loadHTML('<?xml encoding="utf-8" ?>' . $htmlContent); // Add encoding hint for better parsing
 
 $titleNode = $doc->getElementsByTagName('title')->item(0);
 $toolName = $titleNode ? trim($titleNode->nodeValue) : 'Untitled Tool';
@@ -102,7 +100,7 @@ $newFileName = $slug . '.html';
 $destinationPath = $uploadDir . $newFileName;
 
 if (file_exists($destinationPath)) {
-    redirect_with_status('error', 'A tool with this name already exists. Please change the <title> of your HTML file.');
+    redirect_with_status('error', 'A tool with this name (slug) already exists. Please change the <title> of your HTML file.');
 }
 
 // 5. Move the Uploaded File
@@ -110,31 +108,27 @@ if (!move_uploaded_file($file['tmp_name'], $destinationPath)) {
     redirect_with_status('error', 'Failed to move uploaded file to the tools directory.');
 }
 
-// 6. Update tools.json
-$toolsData = json_decode(file_get_contents($toolsJsonPath), true);
-if ($toolsData === null) {
-    // Handle JSON decode error or empty file
-    $toolsData = [];
-}
+// 6. Insert New Tool into Database
+try {
+    $sql = "INSERT INTO tools (name, slug, path, description) VALUES (:name, :slug, :path, :description)";
+    $stmt = $pdo->prepare($sql);
 
-$newTool = [
-    'name' => $toolName,
-    'path' => $destinationPath,
-    'description' => $metaDescription,
-];
-$toolsData[] = $newTool;
-
-// Use flock for safe file writing
-$jsonFile = fopen($toolsJsonPath, 'w');
-if ($jsonFile && flock($jsonFile, LOCK_EX)) {
-    fwrite($jsonFile, json_encode($toolsData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-    flock($jsonFile, LOCK_UN);
-    fclose($jsonFile);
-} else {
-    // Could not get a lock or open file, attempt to clean up
+    $stmt->execute([
+        ':name' => $toolName,
+        ':slug' => $slug,
+        ':path' => $destinationPath,
+        ':description' => $metaDescription,
+    ]);
+} catch (PDOException $e) {
+    // If database insert fails, we should delete the file we just uploaded.
     unlink($destinationPath);
-    redirect_with_status('error', 'Could not write to tools.json. Please check file permissions.');
+    // Check for unique constraint violation
+    if ($e->errorInfo[1] == 1062) {
+        redirect_with_status('error', 'A tool with this name (slug) already exists in the database.');
+    }
+    redirect_with_status('error', 'Database error: ' . $e->getMessage());
 }
+
 
 // 7. Update sitemap.xml
 try {
@@ -151,11 +145,11 @@ try {
     $path = rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
     $baseUrl = $protocol . $host . $path;
 
-    // To rebuild the sitemap correctly with the new tool, we must re-read the updated tools.json
-    $updatedToolsJson = file_get_contents($toolsJsonPath);
-    $allTools = json_decode($updatedToolsJson, true);
+    // Fetch all tools from the database to rebuild the sitemap
+    $stmt = $pdo->query("SELECT slug FROM tools");
+    $allTools = $stmt->fetchAll();
 
-    // Clear existing tool URLs from sitemap to rebuild, keeps base URLs
+    // Clear existing tool URLs from sitemap to rebuild
     $existingUrls = $sitemap->getElementsByTagName('url');
     for ($i = $existingUrls->length - 1; $i >= 0; $i--) {
         $urlNode = $existingUrls->item($i);
@@ -167,8 +161,7 @@ try {
 
     // Add all tools back with pretty URLs
     foreach ($allTools as $tool) {
-        $slug = basename($tool['path'], '.html');
-        $prettyUrl = $baseUrl . '/tools/' . $slug . '/';
+        $prettyUrl = $baseUrl . '/tools/' . $tool['slug'] . '/';
 
         $newUrlNode = $sitemap->createElement('url');
         $newUrlNode->appendChild($sitemap->createElement('loc', $prettyUrl));
@@ -178,14 +171,13 @@ try {
 
     $sitemap->save($sitemapPath);
 } catch (Exception $e) {
-    // Something went wrong with sitemap, this is non-critical but should be noted.
-    // For now, we continue but a more robust system might log this error.
-    // To be safe, we can redirect with a partial success message.
-    redirect_with_status('success', 'Tool uploaded, but sitemap could not be updated. Error: ' . $e->getMessage());
+    // This is non-critical, so we don't rollback the DB insert.
+    // We redirect with a success status but add a warning message.
+    redirect_with_status('success', 'Tool uploaded successfully, but the sitemap could not be updated. Error: ' . $e->getMessage());
 }
 
 
 // 8. Redirect on Success
-redirect_with_status('success');
+redirect_with_status('success', 'Tool uploaded and added to the database successfully!');
 
 ?>
