@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Calendar Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/client": "https://esm.sh/react-dom@^19.1.0/client",
+    "html-to-image": "https://esm.sh/html-to-image@^1.11.13",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+  <script type="module">
+    import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+    import ReactDOM from 'react-dom/client';
+    import * as htmlToImage from 'html-to-image';
+    import { createClient } from '@supabase/supabase-js';
+
+    // --- Inlined services/supabaseClient.ts ---
+    const supabaseUrl = "https://axfbhlldujeruqgjvibz.supabase.co";
+    const supabaseAnonKey = "sb_publishable_wtePlot885VU3GIWvNhBfg_d6kfJSlQ";
+    const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+    const supabase = isSupabaseConfigured
+        ? createClient(supabaseUrl, supabaseAnonKey)
+        : null;
+    if (!isSupabaseConfigured) {
+        console.warn("Supabase credentials not provided in environment variables. App will run in local-only mode.");
+    }
+    
+    // --- Inlined hooks/useDebounce.ts ---
+    function useDebounce(value, delay) {
+      const [debouncedValue, setDebouncedValue] = useState(value);
+      useEffect(() => {
+        const handler = setTimeout(() => {
+          setDebouncedValue(value);
+        }, delay);
+        return () => {
+          clearTimeout(handler);
+        };
+      }, [value, delay]);
+      return debouncedValue;
+    }
+
+    // --- Inlined hooks/useCalendar.ts ---
+    const useCalendar = (date) => {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const calendarDays = useMemo(() => {
+        const days = [];
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const firstDayOfWeek = firstDayOfMonth.getDay();
+        const lastDayOfMonthDate = lastDayOfMonth.getDate();
+        for (let i = firstDayOfWeek; i > 0; i--) {
+          const prevMonthDay = new Date(year, month, 1 - i);
+          days.push({ date: prevMonthDay, isCurrentMonth: false });
+        }
+        for (let i = 1; i <= lastDayOfMonthDate; i++) {
+          const currentDay = new Date(year, month, i);
+          days.push({
+            date: currentDay,
+            isCurrentMonth: true,
+          });
+        }
+        const totalCells = days.length > 35 ? 42 : 35;
+        const remainingCells = totalCells - days.length;
+        for (let i = 1; i <= remainingCells; i++) {
+          const nextMonthDay = new Date(year, month + 1, i);
+          days.push({ date: nextMonthDay, isCurrentMonth: false });
+        }
+        return days;
+      }, [year, month]);
+      return { calendarDays };
+    };
+
+    // --- Inlined components/Toast.tsx ---
+    const Toast = ({ toast, onClose }) => {
+      if (!toast) return null;
+      const { message, type } = toast;
+      const styles = {
+        success: {
+          icon: 'fas fa-check-circle',
+          bg: 'bg-green-600',
+        },
+        error: {
+          icon: 'fas fa-exclamation-circle',
+          bg: 'bg-red-600',
+        },
+      };
+      return (
+        React.createElement("div", { className: "fixed top-5 right-5 z-[100] w-auto max-w-sm" },
+          React.createElement("div", {
+            key: Date.now(),
+            className: `flex items-center p-4 text-white rounded-lg shadow-2xl ${styles[type].bg} transition-opacity duration-300`,
+            role: "alert",
+            "aria-live": "assertive"
+          },
+            React.createElement("i", { className: `${styles[type].icon} mr-3 text-xl` }),
+            React.createElement("p", { className: "flex-1 font-medium" }, message),
+            React.createElement("button", { onClick: onClose, className: "ml-4 -mr-1 p-1 rounded-full hover:bg-white/20 transition-colors", "aria-label": "Close" },
+              React.createElement("i", { className: "fas fa-times" })
+            )
+          )
+        )
+      );
+    };
+
+    // --- Inlined components/EventModal.tsx ---
+    const EventModal = ({ isOpen, onClose, onSave, onDelete, event }) => {
+      const [text, setText] = useState('');
+      const [charLimit, setCharLimit] = useState(60);
+      useEffect(() => {
+        const updateLimit = () => {
+            const newLimit = window.innerWidth < 768 ? 40 : 60;
+            setCharLimit(newLimit);
+        };
+        updateLimit();
+        window.addEventListener('resize', updateLimit);
+        return () => window.removeEventListener('resize', updateLimit);
+      }, []);
+      useEffect(() => {
+        if (isOpen) {
+          setText(event?.text || '');
+        }
+      }, [isOpen, event]);
+      if (!isOpen) {
+        return null;
+      }
+      const handleSave = () => {
+        if (text.trim()) {
+          onSave(text);
+        }
+      };
+      const charCount = text.length;
+      return (
+        React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" },
+          React.createElement("div", { className: "bg-white rounded-lg shadow-2xl p-6 w-full max-w-md transform transition-all scale-100 opacity-100" },
+            React.createElement("h2", { className: "text-2xl font-bold mb-4 text-gray-800" }, event?.id ? 'แก้ไขกิจกรรม' : 'เพิ่มกิจกรรม'),
+            React.createElement("div", { className: "relative" },
+              React.createElement("textarea", {
+                value: text,
+                onChange: (e) => setText(e.target.value),
+                placeholder: "ใส่รายละเอียดกิจกรรม...",
+                className: "w-full h-32 p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none",
+                maxLength: charLimit,
+                autoFocus: true
+              }),
+              React.createElement("div", { className: `text-right text-sm mt-1 ${charCount > charLimit ? 'text-red-500 font-semibold' : 'text-gray-500'}` },
+                `${charCount} / ${charLimit}`
+              )
+            ),
+            React.createElement("div", { className: "mt-4 flex justify-end space-x-3" },
+              event?.id && onDelete && (
+                React.createElement("button", {
+                  onClick: onDelete,
+                  className: "px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-semibold"
+                }, "ลบ")
+              ),
+              React.createElement("button", {
+                onClick: onClose,
+                className: "px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-semibold"
+              }, "ยกเลิก"),
+              React.createElement("button", {
+                onClick: handleSave,
+                className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold disabled:bg-blue-300 disabled:cursor-not-allowed",
+                disabled: !text.trim() || charCount > charLimit
+              }, "บันทึก")
+            )
+          )
+        )
+      );
+    };
+
+    // --- Inlined components/Calendar.tsx ---
+    const formatDate = (date) => {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const Calendar = ({ currentDate, events, onAddEvent, onEditEvent, onEventDrop, closestEventId, subtitle, onSubtitleChange }) => {
+      const { calendarDays } = useCalendar(currentDate);
+      const weekdays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+      const [draggedEventId, setDraggedEventId] = React.useState(null);
+      const [dragOverDate, setDragOverDate] = React.useState(null);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const handleDragStart = (e, eventId) => {
+        e.dataTransfer.setData('text/plain', eventId);
+        setDraggedEventId(eventId);
+      };
+      const handleDragOver = (e, day) => {
+        e.preventDefault();
+        if(day.isCurrentMonth) {
+          setDragOverDate(formatDate(day.date));
+        }
+      };
+      const handleDragLeave = () => {
+        setDragOverDate(null);
+      };
+      const handleDrop = (e, day) => {
+        e.preventDefault();
+        const eventId = e.dataTransfer.getData('text/plain');
+        if (eventId && day.isCurrentMonth) {
+          onEventDrop(eventId, formatDate(day.date));
+        }
+        setDraggedEventId(null);
+        setDragOverDate(null);
+      };
+      const handleDragEnd = () => {
+        setDraggedEventId(null);
+        setDragOverDate(null);
+      };
+      const handleTouchStart = (e, eventId) => {
+        setDraggedEventId(eventId);
+      };
+      const handleTouchMove = (e) => {
+        if (!draggedEventId) return;
+        const touch = e.touches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        const dayCell = element?.closest('[data-date]');
+        const date = dayCell?.dataset.date || null;
+        if (dayCell && calendarDays.find(d => formatDate(d.date) === date)?.isCurrentMonth) {
+           setDragOverDate(date);
+        } else {
+           setDragOverDate(null);
+        }
+      };
+      const handleTouchEnd = () => {
+        if (draggedEventId && dragOverDate) {
+          onEventDrop(draggedEventId, dragOverDate);
+        }
+        setDraggedEventId(null);
+        setDragOverDate(null);
+      };
+      const isWeekend = (dayIndex) => dayIndex === 0 || dayIndex === 6;
+      const numRows = calendarDays.length / 7;
+
+      return (
+        React.createElement("div", { className: "h-full flex flex-col" },
+          React.createElement("div", { className: "p-3 sm:p-4" },
+            React.createElement("h1", { className: "text-2xl sm:text-3xl font-bold uppercase tracking-wider text-gray-800" },
+              currentDate.toLocaleString('th-TH', { month: 'long' }), " ", currentDate.getFullYear() + 543
+            ),
+            React.createElement("input", {
+                type: "text",
+                value: subtitle,
+                onChange: (e) => onSubtitleChange(e.target.value),
+                className: "text-lg sm:text-xl font-semibold text-gray-600 mt-1 bg-transparent w-full focus:outline-none focus:ring-2 focus:ring-blue-300 rounded px-1",
+                placeholder: "ใส่หัวเรื่องรอง...",
+                "aria-label": "Calendar Subtitle"
+            })
+          ),
+          React.createElement("div", { className: "grid grid-cols-7 border-t border-b border-gray-200 bg-gray-50" },
+            weekdays.map((day, index) => (
+              React.createElement("div", { key: day, className: `p-1 sm:p-2 text-center text-sm font-bold uppercase ${isWeekend(index) ? 'text-orange-500' : 'text-gray-500'}` }, day)
+            ))
+          ),
+          React.createElement("div", {
+            className: `grid grid-cols-7 ${numRows === 6 ? 'grid-rows-6' : 'grid-rows-5'} flex-grow`,
+            onTouchMove: handleTouchMove,
+            onTouchEnd: handleTouchEnd,
+            onTouchCancel: handleTouchEnd
+          },
+            calendarDays.map((day, index) => {
+              const dayEvents = events.filter(e => e.date === formatDate(day.date));
+              const dayOfWeek = day.date.getDay();
+              const isDateDragOver = dragOverDate === formatDate(day.date);
+              return (
+                React.createElement("div", {
+                  key: index,
+                  "data-date": formatDate(day.date),
+                  className: `relative border-r border-b border-gray-200 p-1 sm:p-2 flex flex-col group transition-colors duration-200 ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${isDateDragOver && day.isCurrentMonth ? '!bg-blue-100' : ''}`,
+                  onDragOver: (e) => handleDragOver(e, day),
+                  onDragLeave: handleDragLeave,
+                  onDrop: (e) => handleDrop(e, day)
+                },
+                  React.createElement("span", { className: `text-xs font-semibold self-end ${isWeekend(dayOfWeek) && day.isCurrentMonth ? 'text-orange-600' : day.isCurrentMonth ? 'text-gray-700' : 'text-gray-400'}` },
+                    String(day.date.getDate()).padStart(2, '0')
+                  ),
+                  React.createElement("div", { className: "flex-grow overflow-y-auto mt-1 space-y-1" },
+                    dayEvents.map(event => {
+                      const eventDate = new Date(event.date + 'T00:00:00');
+                      const isPast = eventDate < today;
+                      const isClosest = event.id === closestEventId;
+                      let styleClasses = 'bg-blue-100 text-blue-800';
+                      if (isPast) {
+                        styleClasses = 'bg-amber-100 text-amber-900';
+                      } else if (isClosest) {
+                        styleClasses = 'border-2 border-dashed border-green-500 bg-green-100 text-green-900';
+                      }
+                      return (
+                        React.createElement("div", {
+                          key: event.id,
+                          draggable: true,
+                          onDragStart: (e) => handleDragStart(e, event.id),
+                          onDragEnd: handleDragEnd,
+                          onTouchStart: (e) => handleTouchStart(e, event.id),
+                          onClick: () => onEditEvent(event),
+                          className: `p-1.5 rounded text-xs sm:text-sm leading-tight cursor-pointer transition-all duration-200 touch-none break-words whitespace-normal ${draggedEventId === event.id ? 'opacity-50 scale-95' : 'hover:shadow-lg'} ${styleClasses}`
+                        },
+                          event.text,
+                          isPast && (
+                            React.createElement("span", { className: "ml-1 inline-flex items-center justify-center w-4 h-4 bg-green-500 text-white rounded-md" },
+                               React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 20 20", fill: "currentColor", className: "w-3 h-3" },
+                                   React.createElement("path", { fillRule: "evenodd", d: "M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z", clipRule: "evenodd" })
+                               )
+                            )
+                          )
+                        )
+                      );
+                    })
+                  ),
+                  day.isCurrentMonth && (
+                    React.createElement("button", {
+                      onClick: () => onAddEvent(formatDate(day.date)),
+                      className: "absolute bottom-1 right-1 w-5 h-5 sm:w-6 sm:h-6 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-green-500 hover:text-white"
+                    },
+                      React.createElement("i", { className: "fas fa-plus text-xs" })
+                    )
+                  )
+                )
+              );
+            })
+          )
+        )
+      );
+    };
+
+    // --- Inlined components/Controls.tsx ---
+    const Controls = ({
+      username,
+      currentDate,
+      onDateChange,
+      onDownload,
+      onBackgroundChange,
+      onSaveProject,
+      onLoadProject,
+      onLogout,
+      isDownloading,
+      onLogin,
+      isSupabaseConfigured,
+    }) => {
+      const bgFileInputRef = useRef(null);
+      const loadFileInputRef = useRef(null);
+      const [usernameInput, setUsernameInput] = useState('');
+      const changeMonth = (offset) => {
+        const newDate = new Date(currentDate);
+        newDate.setMonth(currentDate.getMonth() + offset);
+        onDateChange(newDate);
+      };
+      const changeYear = (offset) => {
+        const newDate = new Date(currentDate);
+        newDate.setFullYear(currentDate.getFullYear() + offset);
+        onDateChange(newDate);
+      };
+      const handleLoginSubmit = (e) => {
+          e.preventDefault();
+          if(usernameInput.trim().length < 2) return;
+          onLogin(usernameInput.trim());
+          setUsernameInput('');
+      };
+      const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+      return (
+        React.createElement("div", { className: "w-full lg:w-80 lg:flex-shrink-0 bg-white p-4 lg:p-6 rounded-lg shadow-lg lg:h-fit" },
+            React.createElement("div", { className: "mb-6 pb-4 border-b border-gray-200" },
+                username ? (
+                     React.createElement("div", { className: "flex justify-between items-center" },
+                        React.createElement("div", { className: "flex items-center space-x-3 text-gray-700 truncate" },
+                            React.createElement("i", { className: "fas fa-user-check text-green-600 fa-lg" }),
+                            React.createElement("span", { className: "font-medium truncate" }, username)
+                        ),
+                        React.createElement("button", { onClick: onLogout, className: "text-sm font-semibold text-red-600 hover:underline flex-shrink-0 ml-4" }, "ออกจากระบบ")
+                    )
+                ) : (
+                    React.createElement("form", { onSubmit: handleLoginSubmit },
+                        React.createElement("label", { className: "text-xl font-bold text-gray-800 mb-2 block" }, "เข้าสู่ระบบ / สร้าง"),
+                        React.createElement("p", { className: "text-xs text-gray-500 mb-2" }, "ป้อนชื่อโปรเจค (อย่างน้อย 2 ตัวอักษร)"),
+                        React.createElement("div", { className: "flex items-center space-x-2" },
+                             React.createElement("input", {
+                                type: "text",
+                                placeholder: "ชื่องาน...",
+                                value: usernameInput,
+                                onChange: (e) => setUsernameInput(e.target.value),
+                                required: true,
+                                minLength: 2,
+                                disabled: !isSupabaseConfigured,
+                                className: "flex-grow p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-200"
+                            }),
+                            React.createElement("button", {
+                                type: "submit",
+                                disabled: !isSupabaseConfigured || usernameInput.trim().length < 2,
+                                className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center justify-center w-40"
+                            }, "เข้าสู่ระบบ / สร้าง")
+                        ),
+                        !isSupabaseConfigured && React.createElement("p", { className: "text-xs text-yellow-600 mt-2" }, "บริการคลาวด์ยังไม่ถูกตั้งค่า"),
+                        React.createElement("p", { className: "text-xs text-amber-600 mt-2" }, "คำเตือน: โปรเจคที่สร้างด้วยชื่อผู้ใช้เป็นแบบสาธารณะ")
+                    )
+                )
+            ),
+          React.createElement("div", { className: "space-y-4 mb-6" },
+            React.createElement("h3", { className: "text-lg font-semibold text-gray-700" }, "เลือกเดือน/ปี"),
+            React.createElement("div", { className: "flex items-center justify-between" },
+                React.createElement("button", { onClick: () => changeMonth(-1), className: "p-2 rounded-full hover:bg-gray-200" }, React.createElement("i", { className: "fas fa-chevron-left" })),
+                React.createElement("span", { className: "font-bold text-lg text-blue-600" }, months[currentDate.getMonth()]),
+                React.createElement("button", { onClick: () => changeMonth(1), className: "p-2 rounded-full hover:bg-gray-200" }, React.createElement("i", { className: "fas fa-chevron-right" }))
+            ),
+             React.createElement("div", { className: "flex items-center justify-between" },
+                React.createElement("button", { onClick: () => changeYear(-1), className: "p-2 rounded-full hover:bg-gray-200" }, React.createElement("i", { className: "fas fa-chevron-left" })),
+                React.createElement("span", { className: "font-bold text-lg text-blue-600" }, currentDate.getFullYear() + 543),
+                React.createElement("button", { onClick: () => changeYear(1), className: "p-2 rounded-full hover:bg-gray-200" }, React.createElement("i", { className: "fas fa-chevron-right" }))
+            )
+          ),
+          React.createElement("div", { className: "space-y-3" },
+            React.createElement("h3", { className: "text-lg font-semibold text-gray-700" }, "การกระทำ"),
+            React.createElement("button", { onClick: () => bgFileInputRef.current?.click(), className: "w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-semibold" },
+              React.createElement("i", { className: "fas fa-image mr-2" }), " เปลี่ยนพื้นหลัง"
+            ),
+            React.createElement("input", { type: "file", accept: "image/*", ref: bgFileInputRef, onChange: onBackgroundChange, className: "hidden" }),
+            React.createElement("button", { onClick: onDownload, disabled: isDownloading, className: "w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold disabled:bg-green-400" },
+              isDownloading ? React.createElement("i", { className: "fas fa-spinner fa-spin mr-2" }) : React.createElement("i", { className: "fas fa-download mr-2" }),
+              isDownloading ? 'กำลังดาวน์โหลด...' : 'ดาวน์โหลดเป็น PNG'
+            )
+          ),
+           React.createElement("div", { className: "space-y-3 mt-6 pt-6 border-t border-gray-200" },
+                React.createElement("h3", { className: "text-lg font-semibold text-gray-700" }, "โปรเจค"),
+                 username ? (
+                    React.createElement("div", { className: "flex items-center justify-center p-3 bg-blue-50 text-blue-800 rounded-md text-sm font-medium" },
+                        React.createElement("i", { className: "fas fa-cloud mr-2" }),
+                        React.createElement("span", null, "บันทึกอัตโนมัติบนคลาวด์")
+                    )
+                ) : (
+                    React.createElement(React.Fragment, null,
+                        React.createElement("button", { onClick: onSaveProject, className: "w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold" },
+                          React.createElement("i", { className: "fas fa-save mr-2" }), " บันทึกเป็นไฟล์"
+                        ),
+                        React.createElement("button", { onClick: () => loadFileInputRef.current?.click(), className: "w-full flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold" },
+                            React.createElement("i", { className: "fas fa-upload mr-2" }), " โหลดโปรเจคจากไฟล์"
+                        ),
+                        React.createElement("input", { type: "file", accept: ".json", ref: loadFileInputRef, onChange: onLoadProject, className: "hidden" })
+                    )
+                )
+            )
+        )
+      );
+    };
+    
+    // --- Inlined App.tsx ---
+    const App = () => {
+        const [username, setUsername] = useState(null);
+        const [loading, setLoading] = useState(false);
+        const [currentDate, setCurrentDate] = useState(new Date());
+        const [events, setEvents] = useState([]);
+        const [backgroundImage, setBackgroundImage] = useState(null);
+        const [subtitle, setSubtitle] = useState('ตาราง BOOK คิวแชร์ประสบการณ์');
+        const [isDownloading, setIsDownloading] = useState(false);
+        const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+        const [selectedEvent, setSelectedEvent] = useState(null);
+        const [selectedDate, setSelectedDate] = useState(null);
+        const [closestEventId, setClosestEventId] = useState(null);
+        const [isInitialLoadFinished, setIsInitialLoadFinished] = useState(false);
+        const [toast, setToast] = useState(null);
+        const calendarRef = useRef(null);
+        const skipNextSave = useRef(false);
+
+        useEffect(() => {
+            setIsInitialLoadFinished(false);
+            if (!username || !isSupabaseConfigured || !supabase) {
+                if (!username) {
+                    setEvents([]);
+                    setBackgroundImage(null);
+                    setCurrentDate(new Date());
+                    setSubtitle('ตาราง BOOK คิวแชร์ประสบการณ์');
+                }
+                setIsInitialLoadFinished(true);
+                return;
+            };
+
+            skipNextSave.current = true;
+
+            const loadProject = async () => {
+                setLoading(true);
+                const { data, error } = await supabase
+                    .from('projects')
+                    .select()
+                    .eq('id', username)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Error loading project:', error);
+                    setToast({ message: 'โหลดโปรเจคล้มเหลว!', type: 'error' });
+                } else if (data) {
+                    setEvents(Array.isArray(data.events) ? data.events : []);
+                    setBackgroundImage(data.background_image || null);
+                    setCurrentDate(new Date(data.date));
+                    setSubtitle(data.subtitle || 'ตาราง BOOK คิวแชร์ประสบการณ์');
+                } else {
+                    setEvents([]);
+                    setBackgroundImage(null);
+                    setCurrentDate(new Date());
+                    setSubtitle('ตาราง BOOK คิวแชร์ประสบการณ์');
+                }
+                setLoading(false);
+                setIsInitialLoadFinished(true);
+            };
+            loadProject();
+        }, [username]);
+        
+        useEffect(() => {
+            if (toast) {
+                const timer = setTimeout(() => {
+                    setToast(null);
+                }, 3000);
+                return () => clearTimeout(timer);
+            }
+        }, [toast]);
+
+        const projectStateToSave = useMemo(() => ({
+            events,
+            currentDate,
+            backgroundImage,
+            subtitle,
+        }), [events, currentDate, backgroundImage, subtitle]);
+
+        const debouncedProjectState = useDebounce(projectStateToSave, 1500);
+
+        useEffect(() => {
+            if (!isInitialLoadFinished || !username || !isSupabaseConfigured || !supabase) {
+                return;
+            }
+            if (skipNextSave.current) {
+                skipNextSave.current = false;
+                return;
+            }
+            const autoSaveProject = async () => {
+                const projectData = {
+                    id: username,
+                    events: debouncedProjectState.events,
+                    background_image: debouncedProjectState.backgroundImage,
+                    date: debouncedProjectState.currentDate.toISOString(),
+                    subtitle: debouncedProjectState.subtitle,
+                    updated_at: new Date().toISOString()
+                };
+                const { error } = await supabase.from('projects').upsert(projectData);
+                if (error) {
+                    console.error('Auto-save error:', error);
+                    const errorMessage = `การบันทึกล้มเหลว: ${error.message || 'เกิดข้อผิดพลาดที่ไม่รู้จัก'}`;
+                    setToast({ message: errorMessage, type: 'error' });
+                } else {
+                    setToast({ message: 'บันทึกอัตโนมัติแล้ว', type: 'success' });
+                }
+            };
+            autoSaveProject();
+        }, [debouncedProjectState, username]);
+
+        useEffect(() => {
+            const findClosestEvent = () => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const upcomingEvents = events
+                    .map(event => ({
+                        ...event,
+                        eventDate: new Date(event.date + 'T00:00:00')
+                    }))
+                    .filter(event => event.eventDate >= today);
+                if (upcomingEvents.length === 0) {
+                    setClosestEventId(null);
+                    return;
+                }
+                upcomingEvents.sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+                setClosestEventId(upcomingEvents[0].id);
+            };
+            findClosestEvent();
+        }, [events]);
+
+        const handleAddEventClick = useCallback((date) => {
+            setSelectedDate(date);
+            setSelectedEvent(null);
+            setIsEventModalOpen(true);
+        }, []);
+
+        const handleEditEventClick = useCallback((event) => {
+            setSelectedEvent(event);
+            setSelectedDate(event.date);
+            setIsEventModalOpen(true);
+        }, []);
+
+        const handleSaveEvent = useCallback((text) => {
+            setEvents(prevEvents => {
+                if (selectedEvent?.id) {
+                    return prevEvents.map(e => e.id === selectedEvent.id ? { ...e, text } : e);
+                } else if(selectedDate) {
+                    const newEvent = { id: crypto.randomUUID(), date: selectedDate, text };
+                    return [...prevEvents, newEvent];
+                }
+                return prevEvents;
+            });
+            setIsEventModalOpen(false);
+            setSelectedEvent(null);
+            setSelectedDate(null);
+        }, [selectedEvent, selectedDate]);
+
+        const handleDeleteEvent = useCallback(() => {
+            if (selectedEvent?.id) {
+                setEvents(prevEvents => prevEvents.filter(e => e.id !== selectedEvent.id));
+                setIsEventModalOpen(false);
+                setSelectedEvent(null);
+                setSelectedDate(null);
+            }
+        }, [selectedEvent]);
+
+        const handleEventDrop = useCallback((eventId, newDate) => {
+            setEvents(prevEvents => prevEvents.map(e => e.id === eventId ? { ...e, date: newDate } : e));
+        }, []);
+
+        const handleBackgroundChange = (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setBackgroundImage(event.target?.result);
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        };
+
+        const handleDownload = useCallback(() => {
+            if (!calendarRef.current) return;
+            setIsDownloading(true);
+            htmlToImage.toPng(calendarRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff' })
+                .then((dataUrl) => {
+                    const link = document.createElement('a');
+                    link.download = `calendar-${formatDate(new Date(currentDate))}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                })
+                .catch((err) => {
+                    console.error('oops, something went wrong!', err);
+                     setToast({ message: 'ดาวน์โหลดล้มเหลว', type: 'error' });
+                })
+                .finally(() => {
+                    setIsDownloading(false);
+                });
+        }, [currentDate]);
+
+        const handleSaveProject = () => {
+            const projectData = { events, backgroundImage, date: currentDate.toISOString(), subtitle };
+            const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'calendar-project.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            setToast({ message: 'บันทึกโปรเจคเป็นไฟล์สำเร็จ!', type: 'success' });
+        };
+
+        const handleLoadProject = (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const text = event.target?.result;
+                    const data = JSON.parse(text);
+                    if (data && Array.isArray(data.events) && typeof data.date === 'string') {
+                        setEvents(data.events);
+                        setBackgroundImage(data.backgroundImage || null);
+                        setCurrentDate(new Date(data.date));
+                        setSubtitle(data.subtitle || 'ตาราง BOOK คิวแชร์ประสบการณ์');
+                        setToast({ message: 'โหลดโปรเจคสำเร็จ!', type: 'success' });
+                    } else {
+                         throw new Error('Invalid file content');
+                    }
+                } catch (err) {
+                    console.error("Error loading project file:", err);
+                    setToast({ message: 'ไฟล์โปรเจคไม่ถูกต้อง', type: 'error' });
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        };
+
+        const handleLogin = (newUsername) => {
+            if(newUsername.length >= 2) {
+                setUsername(newUsername);
+            } else {
+                 setToast({ message: 'ชื่อผู้ใช้ต้องมีอย่างน้อย 2 ตัวอักษร', type: 'error' });
+            }
+        };
+        
+        const handleLogout = () => {
+            setUsername(null);
+            setSubtitle('ตาราง BOOK คิวแชร์ประสบการณ์');
+        };
+
+        if (loading) {
+            return (
+                React.createElement("div", { className: "min-h-screen bg-gray-100 flex items-center justify-center" },
+                    React.createElement("i", { className: "fas fa-spinner fa-spin fa-3x text-blue-600" })
+                )
+            )
+        }
+
+        return (
+            React.createElement("div", { className: "min-h-screen bg-gray-100 text-gray-800 font-sans" },
+                React.createElement(Toast, { toast: toast, onClose: () => setToast(null) }),
+                React.createElement("main", { className: "p-4 lg:p-8" },
+                    React.createElement("div", { className: "max-w-7xl mx-auto flex flex-col lg:flex-row gap-8" },
+                        React.createElement(Controls, {
+                            username: username,
+                            currentDate: currentDate,
+                            onDateChange: setCurrentDate,
+                            onDownload: handleDownload,
+                            onBackgroundChange: handleBackgroundChange,
+                            onSaveProject: handleSaveProject,
+                            onLoadProject: handleLoadProject,
+                            onLogout: handleLogout,
+                            isDownloading: isDownloading,
+                            onLogin: handleLogin,
+                            isSupabaseConfigured: isSupabaseConfigured
+                        }),
+                        React.createElement("div", {
+                            ref: calendarRef,
+                            className: "flex-grow bg-white shadow-xl rounded-lg overflow-hidden",
+                            style: {
+                                backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat',
+                            }
+                        },
+                          React.createElement(Calendar, {
+                              currentDate: currentDate,
+                              events: events,
+                              onAddEvent: handleAddEventClick,
+                              onEditEvent: handleEditEventClick,
+                              onEventDrop: handleEventDrop,
+                              closestEventId: closestEventId,
+                              subtitle: subtitle,
+                              onSubtitleChange: setSubtitle
+                          })
+                        )
+                    )
+                ),
+                React.createElement(EventModal, {
+                    isOpen: isEventModalOpen,
+                    onClose: () => setIsEventModalOpen(false),
+                    onSave: handleSaveEvent,
+                    onDelete: selectedEvent?.id ? handleDeleteEvent : undefined,
+                    event: selectedEvent
+                })
+            )
+        );
+    };
+
+    // --- Inlined index.tsx ---
+    const rootElement = document.getElementById('root');
+    if (!rootElement) {
+      throw new Error("Could not find root element to mount to");
+    }
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      React.createElement(React.StrictMode, null, React.createElement(App, null))
+    );
+  </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
