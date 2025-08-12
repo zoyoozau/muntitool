@@ -1,0 +1,18 @@
+# Enable the rewrite engine
+RewriteEngine On
+
+# Set the base for all rewrite rules
+# If the site is in a subdirectory, change this to /your-subdirectory/
+RewriteBase /
+
+# --- Rules for Pretty URLs ---
+
+# 1. Redirect requests for the tool page to use the slug
+# Example: /tools/my-awesome-tool/ -> /tool.php?slug=my-awesome-tool
+
+# First, ensure the request is not for an existing file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# The rewrite rule
+RewriteRule ^tools/([a-zA-Z0-9-]+)/?$ tool.php?slug=$1 [L,QSA]

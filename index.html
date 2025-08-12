@@ -93,8 +93,12 @@
                     }
 
                     tools.forEach(tool => {
+                        // Extract slug from path like "tools/my-slug.html" -> "my-slug"
+                        const slug = tool.path.split('/').pop().replace(/\.html$/, '');
+                        const prettyUrl = `tools/${slug}/`;
+
                         const toolCard = `
-                            <a href="tool.html?path=${tool.path}" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                            <a href="${prettyUrl}" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
                                 <h3 class="text-xl font-semibold text-gray-800">${tool.name}</h3>
                                 <p class="text-gray-600 mt-2">${tool.description || ''}</p>
                                 <div class="mt-4 text-blue-600 hover:underline">

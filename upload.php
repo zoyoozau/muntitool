@@ -151,11 +151,30 @@ try {
     $path = rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
     $baseUrl = $protocol . $host . $path;
 
-    $newUrlNode = $sitemap->createElement('url');
-    $newUrlNode->appendChild($sitemap->createElement('loc', $baseUrl . '/tool.html?path=' . $destinationPath));
-    $newUrlNode->appendChild($sitemap->createElement('lastmod', date('Y-m-d')));
+    // To rebuild the sitemap correctly with the new tool, we must re-read the updated tools.json
+    $updatedToolsJson = file_get_contents($toolsJsonPath);
+    $allTools = json_decode($updatedToolsJson, true);
 
-    $urlset->appendChild($newUrlNode);
+    // Clear existing tool URLs from sitemap to rebuild, keeps base URLs
+    $existingUrls = $sitemap->getElementsByTagName('url');
+    for ($i = $existingUrls->length - 1; $i >= 0; $i--) {
+        $urlNode = $existingUrls->item($i);
+        $loc = $urlNode->getElementsByTagName('loc')->item(0)->nodeValue;
+        if (strpos($loc, 'tools/')) {
+            $urlNode->parentNode->removeChild($urlNode);
+        }
+    }
+
+    // Add all tools back with pretty URLs
+    foreach ($allTools as $tool) {
+        $slug = basename($tool['path'], '.html');
+        $prettyUrl = $baseUrl . '/tools/' . $slug . '/';
+
+        $newUrlNode = $sitemap->createElement('url');
+        $newUrlNode->appendChild($sitemap->createElement('loc', $prettyUrl));
+        $newUrlNode->appendChild($sitemap->createElement('lastmod', date('Y-m-d')));
+        $urlset->appendChild($newUrlNode);
+    }
 
     $sitemap->save($sitemapPath);
 } catch (Exception $e) {
