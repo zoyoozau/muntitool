@@ -1,14 +1,21 @@
 <?php
 require_once 'db_config.php';
 
-// Fetch all tools from the database
+$toolsByCategory = [];
+$db_error = null;
+
+// Fetch all tools from the database, ordered by category
 try {
-    $stmt = $pdo->query("SELECT name, slug, description FROM tools ORDER BY created_at DESC");
+    $stmt = $pdo->query("SELECT name, slug, description, category FROM tools ORDER BY category, name ASC");
     $tools = $stmt->fetchAll();
+
+    // Group tools by category
+    foreach ($tools as $tool) {
+        $toolsByCategory[$tool['category']][] = $tool;
+    }
+
 } catch (\PDOException $e) {
     // If the database connection fails, we can't show the tools.
-    // Show a friendly error message. In a real app, you'd log the error.
-    $tools = [];
     $db_error = "Error: Could not connect to the database to fetch tools. Please ensure the database is configured correctly.";
 }
 ?>
@@ -71,24 +78,32 @@ try {
 
         <!-- Main Content -->
         <main class="flex-grow container mx-auto px-4 py-8">
-            <h2 class="text-2xl font-semibold mb-6">Available Tools</h2>
-            <div id="tools-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php if (isset($db_error)): ?>
-                    <p class="text-red-500 col-span-full"><?php echo $db_error; ?></p>
-                <?php elseif (empty($tools)): ?>
-                    <p class="text-gray-500 col-span-full">No tools available yet. Why not <a href="upload.html" class="text-blue-600 hover:underline">add one</a>?</p>
-                <?php else: ?>
-                    <?php foreach ($tools as $tool): ?>
-                        <a href="tools/<?php echo htmlspecialchars($tool['slug']); ?>/" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                            <h3 class="text-xl font-semibold text-gray-800"><?php echo htmlspecialchars($tool['name']); ?></h3>
-                            <p class="text-gray-600 mt-2"><?php echo htmlspecialchars($tool['description']); ?></p>
-                            <div class="mt-4 text-blue-600 hover:underline">
-                                Open Tool <i class="fas fa-arrow-right ml-1"></i>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
+
+            <?php if ($db_error): ?>
+                <p class="text-red-500"><?php echo $db_error; ?></p>
+            <?php elseif (empty($toolsByCategory)): ?>
+                <p class="text-gray-500">No tools available yet. Why not <a href="upload.html" class="text-blue-600 hover:underline">add one</a>?</p>
+            <?php else: ?>
+                <?php foreach ($toolsByCategory as $category => $tools): ?>
+                    <div class="mb-12">
+                        <h2 class="text-2xl font-bold border-b-2 border-blue-500 pb-2 mb-6">
+                            <?php echo htmlspecialchars($category); ?>
+                        </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <?php foreach ($tools as $tool): ?>
+                                <a href="tools/<?php echo htmlspecialchars($tool['slug']); ?>/" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                                    <h3 class="text-xl font-semibold text-gray-800"><?php echo htmlspecialchars($tool['name']); ?></h3>
+                                    <p class="text-gray-600 mt-2"><?php echo htmlspecialchars($tool['description']); ?></p>
+                                    <div class="mt-4 text-blue-600 hover:underline">
+                                        Open Tool <i class="fas fa-arrow-right ml-1"></i>
+                                    </div>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
         </main>
 
         <!-- Footer -->

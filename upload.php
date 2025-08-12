@@ -108,9 +108,25 @@ if (!move_uploaded_file($file['tmp_name'], $destinationPath)) {
     redirect_with_status('error', 'Failed to move uploaded file to the tools directory.');
 }
 
-// 6. Insert New Tool into Database
+// 6. Validate Category and Insert New Tool into Database
+$allowedCategories = [
+    'Kids & Education',
+    'PDF & Docs',
+    'Image & Design',
+    'Social & Marketing',
+    'Audio & Media',
+    'Utilities & Calendars'
+];
+$category = isset($_POST['category']) ? $_POST['category'] : '';
+
+if (!in_array($category, $allowedCategories)) {
+    // If category is invalid, delete the uploaded file and show an error.
+    unlink($destinationPath);
+    redirect_with_status('error', 'Invalid category selected.');
+}
+
 try {
-    $sql = "INSERT INTO tools (name, slug, path, description) VALUES (:name, :slug, :path, :description)";
+    $sql = "INSERT INTO tools (name, slug, path, description, category) VALUES (:name, :slug, :path, :description, :category)";
     $stmt = $pdo->prepare($sql);
 
     $stmt->execute([
@@ -118,6 +134,7 @@ try {
         ':slug' => $slug,
         ':path' => $destinationPath,
         ':description' => $metaDescription,
+        ':category' => $category,
     ]);
 } catch (PDOException $e) {
     // If database insert fails, we should delete the file we just uploaded.

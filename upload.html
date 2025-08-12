@@ -56,6 +56,18 @@
                 </div>
             </div>
             <div class="mt-6">
+                <label for="category-select" class="block text-sm font-medium text-gray-700">Category</label>
+                <select id="category-select" name="category" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="" disabled selected>Select a category</option>
+                    <option value="Kids & Education">Kids & Education</option>
+                    <option value="PDF & Docs">PDF & Docs</option>
+                    <option value="Image & Design">Image & Design</option>
+                    <option value="Social & Marketing">Social & Marketing</option>
+                    <option value="Audio & Media">Audio & Media</option>
+                    <option value="Utilities & Calendars">Utilities & Calendars</option>
+                </select>
+            </div>
+            <div class="mt-6">
                 <button type="submit" id="submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
                     <i class="fas fa-upload mr-2"></i>Upload and Process Tool
                 </button>
