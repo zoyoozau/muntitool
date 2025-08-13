@@ -6,11 +6,7 @@ require_once 'db_config.php';
 header('Content-Type: application/xml; charset=utf-8');
 
 // --- Dynamic URL Generation ---
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-$host = $_SERVER['HTTP_HOST'];
-// Get the path of the directory where the script is running, and remove the script name if present
-$path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-$baseUrl = $protocol . $host . $path;
+$baseUrl = 'https://muntitool.com';
 
 // --- XML Output ---
 
