@@ -38,13 +38,16 @@ function generate_sitemap_xml($pdo) {
 
     // 2. Add dynamic tool pages from the database
     try {
-        $stmt = $pdo->query("SELECT slug, created_at FROM tools ORDER BY created_at DESC");
-        $tools = $stmt->fetchAll();
+        // Select updated_at as well, which will be used for lastmod if available.
+        $stmt = $pdo->query("SELECT slug, created_at, updated_at FROM tools ORDER BY created_at DESC");
+        $tools = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($tools as $tool) {
-            $toolUrl = $baseUrl . '/tools/' . htmlspecialchars($tool['slug']) . '/';
-            // Format the created_at timestamp to Y-m-d format for lastmod
-            $lastMod = date('Y-m-d', strtotime($tool['created_at']));
+            $toolUrl = $baseUrl . '/tools/' . htmlspecialchars($tool['slug']) . '.html';
+
+            // Use updated_at for lastmod if it's not NULL, otherwise fallback to created_at.
+            $lastModTimestamp = !empty($tool['updated_at']) ? $tool['updated_at'] : $tool['created_at'];
+            $lastMod = date('Y-m-d', strtotime($lastModTimestamp));
 
             echo "  <url>\n";
             echo "    <loc>" . $toolUrl . "</loc>\n";

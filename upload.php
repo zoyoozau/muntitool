@@ -76,39 +76,30 @@ if ($htmlContent === false) {
     redirect_with_status('error', 'Could not read file content.');
 }
 
-$doc = new DOMDocument();
-@$doc->loadHTML('<?xml encoding="utf-8" ?>' . $htmlContent); // Add encoding hint for better parsing
+// Use regex to find the title. This avoids the need for the DOM extension.
+$titleMatch = [];
+if (preg_match('/<title>(.*?)<\/title>/is', $htmlContent, $titleMatch)) {
+    $toolName = trim($titleMatch[1]);
+} else {
+    $toolName = 'Untitled Tool';
+}
 
-$titleNode = $doc->getElementsByTagName('title')->item(0);
-$toolName = $titleNode ? trim($titleNode->nodeValue) : 'Untitled Tool';
-
-$metaDescription = '';
-$metaNodes = $doc->getElementsByTagName('meta');
-foreach ($metaNodes as $meta) {
-    if (strtolower($meta->getAttribute('name')) === 'description') {
-        $metaDescription = trim($meta->getAttribute('content'));
-        break;
-    }
+// Use regex to find the meta description.
+$descriptionMatch = [];
+if (preg_match('/<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']/is', $htmlContent, $descriptionMatch)) {
+    $metaDescription = trim($descriptionMatch[1]);
+} else {
+    $metaDescription = '';
 }
 if (empty($metaDescription)) {
     $metaDescription = 'No description provided.';
 }
 
-// 4. Generate Slug and New File Path
+// 4. Generate Slug and Validate Category
 $slug = slugify($toolName);
 $newFileName = $slug . '.html';
 $destinationPath = $uploadDir . $newFileName;
 
-if (file_exists($destinationPath)) {
-    redirect_with_status('error', 'A tool with this name (slug) already exists. Please change the <title> of your HTML file.');
-}
-
-// 5. Move the Uploaded File
-if (!move_uploaded_file($file['tmp_name'], $destinationPath)) {
-    redirect_with_status('error', 'Failed to move uploaded file to the tools directory.');
-}
-
-// 6. Validate Category and Insert New Tool into Database
 $allowedCategories = [
     'Kids & Education',
     'PDF & Docs',
@@ -120,38 +111,62 @@ $allowedCategories = [
 $category = isset($_POST['category']) ? $_POST['category'] : '';
 
 if (!in_array($category, $allowedCategories)) {
-    // If category is invalid, delete the uploaded file and show an error.
-    unlink($destinationPath);
     redirect_with_status('error', 'Invalid category selected.');
 }
 
+// 5. Check if Tool Exists and Perform DB Operation (Update or Insert)
 try {
-    $sql = "INSERT INTO tools (name, slug, path, description, category) VALUES (:name, :slug, :path, :description, :category)";
-    $stmt = $pdo->prepare($sql);
+    // Check for an existing tool with the same slug.
+    $stmt = $pdo->prepare("SELECT id FROM tools WHERE slug = :slug");
+    $stmt->execute([':slug' => $slug]);
+    $existingTool = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $stmt->execute([
-        ':name' => $toolName,
-        ':slug' => $slug,
-        ':path' => $destinationPath,
-        ':description' => $metaDescription,
-        ':category' => $category,
-    ]);
-} catch (PDOException $e) {
-    // If database insert fails, we should delete the file we just uploaded.
-    unlink($destinationPath);
-    // Check for unique constraint violation
-    if ($e->errorInfo[1] == 1062) {
-        redirect_with_status('error', 'A tool with this name (slug) already exists in the database.');
+    $successMessage = '';
+
+    if ($existingTool) {
+        // --- UPDATE EXISTING TOOL ---
+        $sql = "UPDATE tools SET name = :name, description = :description, category = :category WHERE id = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':name' => $toolName,
+            ':description' => $metaDescription,
+            ':category' => $category,
+            ':id' => $existingTool['id']
+        ]);
+        $successMessage = "เครื่องมือได้รับการอัปเดตเรียบร้อยแล้ว (Tool has been updated successfully!)";
+
+    } else {
+        // --- INSERT NEW TOOL ---
+        $sql = "INSERT INTO tools (name, slug, path, description, category) VALUES (:name, :slug, :path, :description, :category)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':name' => $toolName,
+            ':slug' => $slug,
+            ':path' => $destinationPath,
+            ':description' => $metaDescription,
+            ':category' => $category,
+        ]);
+        $successMessage = "เครื่องมือใหม่ถูกอัปโหลดเรียบร้อยแล้ว (New tool has been uploaded successfully!)";
     }
+
+    // 6. Move the uploaded file (overwrite if exists)
+    if (!move_uploaded_file($file['tmp_name'], $destinationPath)) {
+        // This is unlikely but possible if permissions are wrong.
+        // We don't rollback the DB change here, as the record is valid.
+        // The user can just re-upload the file.
+        redirect_with_status('error', 'Database was updated, but failed to move the tool file.');
+    }
+
+    // 7. Generate and save the new sitemap
+    require_once '_sitemap_generator.php';
+    $xmlContent = generate_sitemap_xml($pdo);
+    file_put_contents('sitemap.xml', $xmlContent, LOCK_EX);
+
+    // 8. Redirect on Success
+    redirect_with_status('success', $successMessage);
+
+} catch (PDOException $e) {
+    // If any database operation fails, show a generic error.
     redirect_with_status('error', 'Database error: ' . $e->getMessage());
 }
-
-// 7. Generate and save the new sitemap
-require_once '_sitemap_generator.php';
-$xmlContent = generate_sitemap_xml($pdo);
-// Use LOCK_EX to prevent race conditions if the script were to run concurrently.
-file_put_contents('sitemap.xml', $xmlContent, LOCK_EX);
-
-// 8. Redirect on Success
-redirect_with_status('success', 'Tool uploaded and added to the database successfully!');
 ?>
