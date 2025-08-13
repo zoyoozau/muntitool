@@ -1,6 +1,6 @@
 <?php
 // --- Database Configuration ---
-define('DB_HOST', '127.0.0.1');
+define('DB_HOST', 'localhost');
 define('DB_NAME', 'moo');
 define('DB_USER', 'thaisum_moo');
 define('DB_PASS', '038382167');
