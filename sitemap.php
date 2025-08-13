@@ -20,8 +20,7 @@ echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 // 1. Add static pages
 $today = date('Y-m-d');
 $staticPages = [
-    '', // Homepage
-    '/upload.html' // Upload page
+    '' // Homepage
 ];
 
 foreach ($staticPages as $page) {

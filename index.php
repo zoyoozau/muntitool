@@ -110,7 +110,6 @@ try {
         <footer class="bg-white mt-8 py-4">
             <div class="container mx-auto px-4 text-center text-gray-500">
                 <p>&copy; 2024 Muntitool. All Rights Reserved.</p>
-                <a href="upload.html" class="text-xs text-gray-400 hover:text-gray-600 mt-2 inline-block">Admin</a>
             </div>
         </footer>
     </div>
