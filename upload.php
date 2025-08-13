@@ -4,7 +4,7 @@ require_once 'db_config.php';
 
 // --- Configuration ---
 $uploadDir = 'tools/';
-$sitemapPath = 'sitemap.xml';
+$sitemapPath = 'sitemap.xml'; // This file is now virtual, but we might still need the path for logic.
 $allowedMimeType = 'text/html';
 $maxFileSize = 2 * 1024 * 1024; // 2 MB
 
@@ -146,55 +146,9 @@ try {
     redirect_with_status('error', 'Database error: ' . $e->getMessage());
 }
 
-
-// 7. Update sitemap.xml
-try {
-    $sitemap = new DOMDocument();
-    $sitemap->preserveWhiteSpace = false;
-    $sitemap->formatOutput = true;
-    $sitemap->load($sitemapPath);
-
-    $urlset = $sitemap->getElementsByTagName('urlset')->item(0);
-
-    // Determine base URL
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'];
-    $path = rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
-    $baseUrl = $protocol . $host . $path;
-
-    // Fetch all tools from the database to rebuild the sitemap
-    $stmt = $pdo->query("SELECT slug FROM tools");
-    $allTools = $stmt->fetchAll();
-
-    // Clear existing tool URLs from sitemap to rebuild
-    $existingUrls = $sitemap->getElementsByTagName('url');
-    for ($i = $existingUrls->length - 1; $i >= 0; $i--) {
-        $urlNode = $existingUrls->item($i);
-        $loc = $urlNode->getElementsByTagName('loc')->item(0)->nodeValue;
-        if (strpos($loc, 'tools/')) {
-            $urlNode->parentNode->removeChild($urlNode);
-        }
-    }
-
-    // Add all tools back with pretty URLs
-    foreach ($allTools as $tool) {
-        $prettyUrl = $baseUrl . '/tools/' . $tool['slug'] . '/';
-
-        $newUrlNode = $sitemap->createElement('url');
-        $newUrlNode->appendChild($sitemap->createElement('loc', $prettyUrl));
-        $newUrlNode->appendChild($sitemap->createElement('lastmod', date('Y-m-d')));
-        $urlset->appendChild($newUrlNode);
-    }
-
-    $sitemap->save($sitemapPath);
-} catch (Exception $e) {
-    // This is non-critical, so we don't rollback the DB insert.
-    // We redirect with a success status but add a warning message.
-    redirect_with_status('success', 'Tool uploaded successfully, but the sitemap could not be updated. Error: ' . $e->getMessage());
-}
-
+// The sitemap is now fully dynamic and doesn't need to be updated from here.
+// This simplifies the logic and removes a potential point of failure.
 
 // 8. Redirect on Success
 redirect_with_status('success', 'Tool uploaded and added to the database successfully!');
-
 ?>

@@ -17,10 +17,10 @@ $options = [
 try {
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 } catch (\PDOException $e) {
-    // In a real production environment, you would log this error and
-    // show a generic, user-friendly error page.
-    // For now, we'll just stop execution and show the error.
-    // The user can enable display_errors in index.php to see this.
+    // This will cause a fatal error, which will lead to a white screen if display_errors is off.
+    // The user can add error reporting to the top of the calling script (e.g., upload.php) to debug this.
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
-?>
+// Note: The closing ?> tag is intentionally omitted. This is a best practice in PHP
+// for files that contain only PHP code. It prevents accidental whitespace from
+// being sent to the browser and causing "headers already sent" errors.
