@@ -27,6 +27,29 @@ function redirect_with_status($status, $message = '') {
 }
 
 /**
+ * Pings Google to inform them that the sitemap has been updated.
+ * This is a "fire and forget" request; we don't need to handle the response.
+ * @param string $sitemapUrl The full URL of the sitemap.
+ */
+function ping_google_sitemap($sitemapUrl) {
+    $pingUrl = "https://www.google.com/ping?sitemap=" . urlencode($sitemapUrl);
+
+    // Use cURL to send the request if the extension is available.
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $pingUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // Don't output the response
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5-second timeout
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Follow redirects
+        curl_exec($ch);
+        curl_close($ch);
+    } else {
+        // Fallback to file_get_contents if cURL is not available.
+        @file_get_contents($pingUrl);
+    }
+}
+
+/**
  * Creates a URL-friendly slug from a string.
  * @param string $text
  * @return string
@@ -162,7 +185,10 @@ try {
     $xmlContent = generate_sitemap_xml($pdo);
     file_put_contents('sitemap.xml', $xmlContent, LOCK_EX);
 
-    // 8. Redirect on Success
+    // 8. Ping Google to notify of the sitemap update
+    ping_google_sitemap('https://muntitool.com/sitemap.xml');
+
+    // 9. Redirect on Success
     redirect_with_status('success', $successMessage);
 
 } catch (PDOException $e) {
