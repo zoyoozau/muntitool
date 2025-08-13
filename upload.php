@@ -146,8 +146,11 @@ try {
     redirect_with_status('error', 'Database error: ' . $e->getMessage());
 }
 
-// The sitemap is now fully dynamic and doesn't need to be updated from here.
-// This simplifies the logic and removes a potential point of failure.
+// 7. Generate and save the new sitemap
+require_once '_sitemap_generator.php';
+$xmlContent = generate_sitemap_xml($pdo);
+// Use LOCK_EX to prevent race conditions if the script were to run concurrently.
+file_put_contents('sitemap.xml', $xmlContent, LOCK_EX);
 
 // 8. Redirect on Success
 redirect_with_status('success', 'Tool uploaded and added to the database successfully!');
