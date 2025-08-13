@@ -21,6 +21,7 @@ try {
     // The user can add error reporting to the top of the calling script (e.g., upload.php) to debug this.
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
-// Note: The closing ?> tag is intentionally omitted. This is a best practice in PHP
+// Note: The closing tag is intentionally omitted. This is a best practice in PHP
 // for files that contain only PHP code. It prevents accidental whitespace from
 // being sent to the browser and causing "headers already sent" errors.
+?>
