@@ -11,21 +11,6 @@
             font-family: 'Inter', sans-serif;
         }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        .instruction-card {
-            transition: background-color 0.3s ease;
-        }
-        .instruction-card:hover {
-            background-color: #f9fafb;
-        }
-        .copy-button {
-            transition: all 0.2s ease;
-        }
-        .copy-button:hover {
-            transform: scale(1.05);
-        }
-        .copy-button.copied {
-            background-color: #22c55e; /* green-500 */
-        }
         .drop-zone {
             border: 2px dashed #d1d5db;
             border-radius: 0.5rem;
@@ -38,6 +23,9 @@
             background-color: #eef2ff; /* indigo-50 */
             border-color: #4f46e5; /* indigo-600 */
         }
+        .alert-toast {
+            transition: opacity 0.5s, transform 0.5s;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -45,16 +33,14 @@
     <div class="container mx-auto px-4 py-10 max-w-4xl">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-900">Add a New Tool</h1>
-            <p class="mt-2 text-gray-600">This page helps you generate the necessary files and configurations to add a new tool to the Muntitool website.</p>
+            <p class="mt-2 text-gray-600">Upload your tool's HTML file here. The system will automatically process it.</p>
             <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline"><i class="fas fa-arrow-left mr-2"></i>Back to Homepage</a>
         </header>
 
-        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-8" role="alert">
-            <p class="font-bold">Important Note</p>
-            <p>This is a static website. This page does not automatically upload files. It will generate the required configurations for you to manually add to the site's repository.</p>
-        </div>
+        <!-- Status Message Area -->
+        <div id="status-message" class="hidden mb-6"></div>
 
-        <div class="bg-white p-8 rounded-lg shadow-md">
+        <form action="upload.php" method="post" enctype="multipart/form-data" class="bg-white p-8 rounded-lg shadow-md">
             <div>
                 <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2">Upload your Tool's HTML file</label>
                 <div id="drop-zone" class="drop-zone">
@@ -63,85 +49,42 @@
                         <p class="text-sm text-gray-500"><span class="font-semibold text-blue-600">Click to upload</span> or drag and drop</p>
                         <p class="text-xs text-gray-400 mt-1">Single HTML file only</p>
                     </div>
-                    <input type="file" id="file-upload" class="hidden" accept=".html, .htm">
+                    <input type="file" id="file-upload" name="tool_file" class="hidden" accept=".html, .htm" required>
                 </div>
                 <div id="file-info" class="mt-4 text-center hidden">
-                    <p class="text-sm font-medium text-green-700"><i class="fas fa-check-circle mr-2"></i><span id="file-name"></span></p>
+                    <p class="text-sm font-medium text-gray-700"><i class="fas fa-file-alt mr-2"></i><span id="file-name"></span></p>
                 </div>
             </div>
             <div class="mt-6">
-                <button id="generate-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
-                    <i class="fas fa-cogs mr-2"></i>Generate Instructions
+                <label for="category-select" class="block text-sm font-medium text-gray-700">Category</label>
+                <select id="category-select" name="category" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="" disabled selected>Select a category</option>
+                    <option value="Kids & Education">Kids & Education</option>
+                    <option value="PDF & Docs">PDF & Docs</option>
+                    <option value="Image & Design">Image & Design</option>
+                    <option value="Social & Marketing">Social & Marketing</option>
+                    <option value="Audio & Media">Audio & Media</option>
+                    <option value="Utilities & Calendars">Utilities & Calendars</option>
+                </select>
+            </div>
+            <div class="mt-6">
+                <button type="submit" id="submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-upload mr-2"></i>Upload and Process Tool
                 </button>
             </div>
-        </div>
-
-        <div id="results-section" class="hidden mt-10">
-            <h2 class="text-3xl font-bold text-center mb-6">Your New Tool Is Ready!</h2>
-            <p class="text-center text-gray-600 mb-8">Follow these steps carefully to add your tool to the website.</p>
-
-            <div class="space-y-8">
-                <!-- Step 1: Rename File -->
-                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
-                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">1</span> Rename Your HTML File</h3>
-                    <p class="mb-4">Your file needs to be named correctly. Rename the HTML file you just uploaded to:</p>
-                    <div class="bg-gray-800 text-white font-mono p-3 rounded-md text-center">
-                        <span id="new-file-name"></span>
-                    </div>
-                </div>
-
-                <!-- Step 2: Upload to Repository -->
-                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
-                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">2</span> Upload to the 'tools' Directory</h3>
-                    <p>In your GitHub repository, navigate to the <code class="bg-gray-200 text-sm font-mono p-1 rounded">tools/</code> directory and upload your newly renamed file.</p>
-                </div>
-
-                <!-- Step 3: Update tools.json -->
-                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
-                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">3</span> Update `tools.json`</h3>
-                    <p class="mb-4">Copy the entire block of code below. Then, open the <code class="bg-gray-200 text-sm font-mono p-1 rounded">tools.json</code> file in the repository's root, delete all its content, and paste this new content.</p>
-                    <div class="relative">
-                        <pre id="tools-json-output" class="bg-gray-800 text-white p-4 rounded-md overflow-x-auto"></pre>
-                        <button class="copy-button absolute top-2 right-2 px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-700" data-clipboard-target="#tools-json-output">Copy</button>
-                    </div>
-                </div>
-
-                <!-- Step 4: Update sitemap.xml -->
-                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
-                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">4</span> Update `sitemap.xml`</h3>
-                    <p class="mb-4">Do the same for the sitemap. Copy the code below and completely replace the content of the <code class="bg-gray-200 text-sm font-mono p-1 rounded">sitemap.xml</code> file in the repository's root.</p>
-                     <div class="relative">
-                        <pre id="sitemap-xml-output" class="bg-gray-800 text-white p-4 rounded-md overflow-x-auto"></pre>
-                        <button class="copy-button absolute top-2 right-2 px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-700" data-clipboard-target="#sitemap-xml-output">Copy</button>
-                    </div>
-                </div>
-
-                <!-- Step 5: Commit -->
-                <div class="bg-white p-6 rounded-lg shadow-md instruction-card">
-                    <h3 class="text-xl font-semibold mb-3"><span class="bg-blue-600 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3">5</span> Commit Your Changes</h3>
-                    <p>Finally, commit the three changes (the new tool file, the updated `tools.json`, and the updated `sitemap.xml`) to your repository. The GitHub Pages action will automatically deploy the new version of the site.</p>
-                </div>
-            </div>
-        </div>
+        </form>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const dropZone = document.getElementById('drop-zone');
             const fileUpload = document.getElementById('file-upload');
             const fileInfo = document.getElementById('file-info');
             const fileNameSpan = document.getElementById('file-name');
-            const generateBtn = document.getElementById('generate-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const statusMessageContainer = document.getElementById('status-message');
 
-            const resultsSection = document.getElementById('results-section');
-            const newFileNameSpan = document.getElementById('new-file-name');
-            const toolsJsonOutput = document.getElementById('tools-json-output');
-            const sitemapXmlOutput = document.getElementById('sitemap-xml-output');
-
-            let toolHtmlContent = null;
-
-            // --- Drag and Drop Logic ---
+            // --- Drag and Drop UI Logic ---
             dropZone.addEventListener('click', () => fileUpload.click());
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -156,126 +99,61 @@
                 dropZone.classList.remove('dragover');
                 const files = e.dataTransfer.files;
                 if (files.length) {
-                    handleFile(files[0]);
+                    fileUpload.files = files; // Assign dropped files to the input
+                    handleFileChange();
                 }
             });
-            fileUpload.addEventListener('change', (e) => {
-                if (e.target.files.length) {
-                    handleFile(e.target.files[0]);
-                }
-            });
+            fileUpload.addEventListener('change', handleFileChange);
 
-            function handleFile(file) {
-                if (file && (file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
+            function handleFileChange() {
+                const file = fileUpload.files[0];
+                if (file) {
                     fileNameSpan.textContent = file.name;
                     fileInfo.classList.remove('hidden');
-                    generateBtn.disabled = false;
-
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        toolHtmlContent = e.target.result;
-                    };
-                    reader.readAsText(file);
+                    submitBtn.disabled = false;
                 } else {
-                    alert('Please upload a valid HTML file (.html or .htm).');
                     fileInfo.classList.add('hidden');
-                    generateBtn.disabled = true;
-                    toolHtmlContent = null;
+                    submitBtn.disabled = true;
                 }
             }
 
-            function slugify(text) {
-                return text.toString().toLowerCase()
-                    .replace(/\s+/g, '-')
-                    .replace(/[^\w\-]+/g, '')
-                    .replace(/\-\-+/g, '-')
-                    .replace(/^-+/, '')
-                    .replace(/-+$/, '');
-            }
+            // --- Status Message Display Logic ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status');
+            const message = urlParams.get('message');
 
-            async function generateSitemap(tools) {
-                const today = new Date().toISOString().split('T')[0];
-                const siteUrl = window.location.origin + window.location.pathname.replace('upload.html', '');
+            if (status) {
+                let alertClass = '';
+                let iconClass = '';
+                let title = '';
 
-                let sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-                sitemapContent += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-                sitemapContent += `  <url>\n    <loc>${siteUrl}</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
-                sitemapContent += `  <url>\n    <loc>${siteUrl}tool.html</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
-
-                tools.forEach(tool => {
-                    sitemapContent += `  <url>\n    <loc>${siteUrl}tool.html?path=${tool.path}</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n`;
-                });
-
-                sitemapContent += `</urlset>`;
-                return sitemapContent;
-            }
-
-            generateBtn.addEventListener('click', async () => {
-                if (!toolHtmlContent) {
-                    alert('Could not read file content. Please try uploading again.');
-                    return;
+                if (status === 'success') {
+                    alertClass = 'bg-green-100 border-green-500 text-green-700';
+                    iconClass = 'fas fa-check-circle';
+                    title = 'Success!';
+                } else if (status === 'error') {
+                    alertClass = 'bg-red-100 border-red-500 text-red-700';
+                    iconClass = 'fas fa-exclamation-circle';
+                    title = 'Error!';
                 }
 
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(toolHtmlContent, 'text/html');
+                if (alertClass) {
+                    const messageText = message || 'Tool uploaded successfully. It should now appear on the homepage.';
+                    statusMessageContainer.innerHTML = `
+                        <div class="border-l-4 p-4 ${alertClass}" role="alert">
+                            <p class="font-bold"><i class="${iconClass} mr-2"></i>${title}</p>
+                            <p>${messageText}</p>
+                        </div>
+                    `;
+                    statusMessageContainer.classList.remove('hidden');
 
-                const toolName = doc.querySelector('title')?.innerText.trim() || 'Untitled Tool';
-                const metaDescription = doc.querySelector('meta[name="description"]');
-                const toolDescription = metaDescription ? metaDescription.getAttribute('content').trim() : 'No description found.';
-
-                // 1. Generate slug and file name
-                const toolSlug = slugify(toolName);
-                const newFileName = `${toolSlug}.html`;
-                const filePath = `tools/${newFileName}`;
-                newFileNameSpan.textContent = newFileName;
-
-                // 2. Update tools.json
-                try {
-                    const response = await fetch('tools.json');
-                    let tools = await response.json();
-
-                    const newTool = {
-                        name: toolName,
-                        path: filePath,
-                        description: toolDescription
-                    };
-
-                    if (tools.some(t => t.path === newTool.path)) {
-                        alert(`A tool with the path "${newTool.path}" already exists. Please change the <title> of your HTML file to generate a unique name.`);
-                        return;
+                    // Clean the URL
+                    if (window.history.replaceState) {
+                        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                        window.history.replaceState({path: cleanUrl}, '', cleanUrl);
                     }
-
-                    tools.push(newTool);
-
-                    const toolsJsonString = JSON.stringify(tools, null, 2);
-                    toolsJsonOutput.textContent = toolsJsonString;
-
-                    // 3. Update sitemap.xml
-                    const sitemapContent = await generateSitemap(tools);
-                    sitemapXmlOutput.textContent = sitemapContent;
-
-                    // 4. Show results
-                    resultsSection.classList.remove('hidden');
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-
-                } catch (error) {
-                    console.error('Error processing files:', error);
-                    alert('Could not load existing tools.json. Make sure the file exists and is accessible.');
                 }
-            });
-
-            // Initialize Clipboard.js
-            const clipboard = new ClipboardJS('.copy-button');
-            clipboard.on('success', function(e) {
-                const originalText = e.trigger.innerHTML;
-                e.trigger.textContent = 'Copied!';
-                e.trigger.classList.add('copied');
-                setTimeout(() => {
-                    e.trigger.innerHTML = originalText;
-                    e.trigger.classList.remove('copied');
-                }, 2000);
-                e.clearSelection();
-            });
+            }
         });
     </script>
 </body>

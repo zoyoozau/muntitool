@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://muntitool.com/sitemap.xml
