@@ -5,20 +5,24 @@ require_once 'db_config.php';
 $toolName = 'Tool Not Found';
 $toolPath = '';
 $errorMessage = '';
-$pageTitle = 'Tool Not Found';
+$pageTitle = 'Tool Not Found | Muntitool';
+$metaDescription = 'A tool was not found on Muntitool. Explore our collection of free web utilities.';
 
 // Check if a slug is provided
 if (isset($_GET['slug']) && !empty($_GET['slug'])) {
     $slug = $_GET['slug'];
 
     try {
-        $stmt = $pdo->prepare("SELECT name, path FROM tools WHERE slug = :slug LIMIT 1");
+        // Also fetch description and category for SEO purposes
+        $stmt = $pdo->prepare("SELECT name, path, description, category FROM tools WHERE slug = :slug LIMIT 1");
         $stmt->execute([':slug' => $slug]);
         $tool = $stmt->fetch();
 
         if ($tool) {
-            $pageTitle = htmlspecialchars($tool['name']);
-            $toolName = $pageTitle;
+            $toolName = htmlspecialchars($tool['name']);
+            // Create a more descriptive page title and meta description
+            $pageTitle = $toolName . ' - ' . htmlspecialchars($tool['category']) . ' | Muntitool';
+            $metaDescription = htmlspecialchars($tool['description']);
             $toolPath = htmlspecialchars($tool['path']);
         } else {
             $errorMessage = 'The requested tool could not be found.';
@@ -41,7 +45,8 @@ if (isset($_GET['slug']) && !empty($_GET['slug'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> - Muntitool</title>
+    <meta name="description" content="<?php echo $metaDescription; ?>">
+    <title><?php echo $pageTitle; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body, html {
